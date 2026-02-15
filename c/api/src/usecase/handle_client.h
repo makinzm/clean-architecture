@@ -2,6 +2,7 @@
 #define HANDLE_CLIENT_H
 
 #include <sys/types.h>
+#include "auth_checker.h"
 
 // I/O port: defined here (usecase), implemented by infrastructure
 typedef ssize_t (*read_fn_t)(int fd, char *buf, size_t len);
@@ -17,6 +18,7 @@ typedef struct {
 typedef struct {
     const io_operations_t *io;
     unsigned int delay_seconds;
+    AuthConfig auth;
 } handler_config_t;
 
 void handle_client_connection(int client_fd, const handler_config_t *config);

@@ -2,16 +2,17 @@
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
   "packages": [
     "gcc@latest",
-    "git@latest"
+    "git@latest",
+    "openssl@latest",
+    "pkg-config@latest"
   ],
   "shell": {
     "init_hook": [
-      "echo 'Welcome to devbox!' > /dev/null"
-    ],
-    "scripts": {
-      "test": [
-        "echo \"Error: no test specified\" && exit 1"
-      ]
-    }
+      "OPENSSL_DEV=$(ls -d /nix/store/*-openssl-*-dev 2>/dev/null | sort -rV | head -1)",
+      "OPENSSL_LIB=$(ls /nix/store/*-openssl-[0-9]*/lib/libcrypto* 2>/dev/null | head -1 | sed 's|/libcrypto.*||')",
+      "[ -n \"$OPENSSL_DEV\" ] && export CPATH=$OPENSSL_DEV/include:$CPATH",
+      "[ -n \"$OPENSSL_DEV\" ] && export PKG_CONFIG_PATH=$OPENSSL_DEV/lib/pkgconfig:$PKG_CONFIG_PATH",
+      "[ -n \"$OPENSSL_LIB\" ] && export LIBRARY_PATH=$OPENSSL_LIB:$LIBRARY_PATH"
+    ]
   }
 }

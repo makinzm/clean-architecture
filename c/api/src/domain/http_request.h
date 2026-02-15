@@ -4,6 +4,7 @@
 typedef struct {
     char method[16];
     char path[256];
+    char auth_token[512];
 } HttpRequest;
 
 void http_request_init(HttpRequest *req);

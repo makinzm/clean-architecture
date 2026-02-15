@@ -1,5 +1,6 @@
 #include "handle_client.h"
 #include "route_request.h"
+#include "auth_checker.h"
 #include "../interface/http_parser.h"
 #include "../interface/http_formatter.h"
 #include <stdio.h>
@@ -19,7 +20,15 @@ void handle_client_connection(int client_fd, const handler_config_t *config) {
     printf("Received data: %s\n", buffer);
 
     HttpRequest req = http_parse(buffer);
-    HttpResponse res = route_request(&req);
+
+    HttpResponse res;
+    if (!check_auth(req.auth_token, &config->auth)) {
+        res.status_code = 401;
+        res.body        = "Unauthorized";
+    } else {
+        res = route_request(&req);
+    }
+
     const char *formatted = http_format(&res);
     config->io->write_to_client(client_fd, formatted, strlen(formatted));
     printf("Sent response to client.\n");

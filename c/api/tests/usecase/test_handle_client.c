@@ -33,13 +33,35 @@ static io_operations_t stub_io = {
     .sleep_fn         = stub_sleep,
 };
 
-// ----- tests -----
+static int stub_verify_ok(const char *token, const char *secret) {
+    (void)token; (void)secret;
+    return 1;
+}
+
+static int stub_verify_fail(const char *token, const char *secret) {
+    (void)token; (void)secret;
+    return 0;
+}
+
+// ----- helper to build a config -----
+
+static handler_config_t make_config(int auth_enabled, verify_fn_t verify_fn) {
+    handler_config_t cfg;
+    cfg.io            = &stub_io;
+    cfg.delay_seconds = 0;
+    cfg.auth.enabled  = auth_enabled;
+    cfg.auth.secret   = "testsecret";
+    cfg.auth.verify_fn = verify_fn;
+    return cfg;
+}
+
+// ----- existing tests (auth disabled) -----
 
 static void test_get_root_responds_200(void) {
     stub_read_data = "GET / HTTP/1.1\r\n\r\n";
     memset(stub_write_buf, 0, sizeof(stub_write_buf));
 
-    handler_config_t config = { .io = &stub_io, .delay_seconds = 0 };
+    handler_config_t config = make_config(0, NULL);
     handle_client_connection(0, &config);
 
     ASSERT_STR_CONTAINS(stub_write_buf, "200 OK");
@@ -50,7 +72,7 @@ static void test_unknown_path_responds_404(void) {
     stub_read_data = "GET /unknown HTTP/1.1\r\n\r\n";
     memset(stub_write_buf, 0, sizeof(stub_write_buf));
 
-    handler_config_t config = { .io = &stub_io, .delay_seconds = 0 };
+    handler_config_t config = make_config(0, NULL);
     handle_client_connection(0, &config);
 
     ASSERT_STR_CONTAINS(stub_write_buf, "404 Not Found");
@@ -60,7 +82,7 @@ static void test_post_root_responds_404(void) {
     stub_read_data = "POST / HTTP/1.1\r\n\r\n";
     memset(stub_write_buf, 0, sizeof(stub_write_buf));
 
-    handler_config_t config = { .io = &stub_io, .delay_seconds = 0 };
+    handler_config_t config = make_config(0, NULL);
     handle_client_connection(0, &config);
 
     ASSERT_STR_CONTAINS(stub_write_buf, "404 Not Found");
@@ -70,10 +92,43 @@ static void test_sleep_called_with_configured_delay(void) {
     stub_read_data        = "GET / HTTP/1.1\r\n\r\n";
     stub_sleep_called_with = 0;
 
-    handler_config_t config = { .io = &stub_io, .delay_seconds = 3 };
+    handler_config_t config = { .io = &stub_io, .delay_seconds = 3,
+                                 .auth = { .enabled = 0 } };
     handle_client_connection(0, &config);
 
     ASSERT_INT_EQ(stub_sleep_called_with, 3);
+}
+
+// ----- auth tests -----
+
+static void test_auth_enabled_valid_token_responds_200(void) {
+    stub_read_data = "GET / HTTP/1.1\r\nAuthorization: Bearer validtoken\r\n\r\n";
+    memset(stub_write_buf, 0, sizeof(stub_write_buf));
+
+    handler_config_t config = make_config(1, stub_verify_ok);
+    handle_client_connection(0, &config);
+
+    ASSERT_STR_CONTAINS(stub_write_buf, "200 OK");
+}
+
+static void test_auth_enabled_no_token_responds_401(void) {
+    stub_read_data = "GET / HTTP/1.1\r\n\r\n";
+    memset(stub_write_buf, 0, sizeof(stub_write_buf));
+
+    handler_config_t config = make_config(1, stub_verify_ok);
+    handle_client_connection(0, &config);
+
+    ASSERT_STR_CONTAINS(stub_write_buf, "401 Unauthorized");
+}
+
+static void test_auth_enabled_invalid_token_responds_401(void) {
+    stub_read_data = "GET / HTTP/1.1\r\nAuthorization: Bearer badtoken\r\n\r\n";
+    memset(stub_write_buf, 0, sizeof(stub_write_buf));
+
+    handler_config_t config = make_config(1, stub_verify_fail);
+    handle_client_connection(0, &config);
+
+    ASSERT_STR_CONTAINS(stub_write_buf, "401 Unauthorized");
 }
 
 int main(void) {
@@ -82,5 +137,8 @@ int main(void) {
     RUN(test_unknown_path_responds_404);
     RUN(test_post_root_responds_404);
     RUN(test_sleep_called_with_configured_delay);
+    RUN(test_auth_enabled_valid_token_responds_200);
+    RUN(test_auth_enabled_no_token_responds_401);
+    RUN(test_auth_enabled_invalid_token_responds_401);
     SUITE_RESULTS();
 }

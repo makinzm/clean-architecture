@@ -1,17 +1,31 @@
 #include "infrastructure/signal_handler.h"
 #include "infrastructure/server.h"
 #include "infrastructure/socket_io.h"
+#include "infrastructure/jwt.h"
 #include "usecase/handle_client.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
 #define PORT 9999
 
 int main(void) {
+    const char *auth_enabled_str = getenv("AUTH_ENABLED");
+    const char *jwt_secret       = getenv("JWT_SECRET");
+    int auth_enabled = (auth_enabled_str && strcmp(auth_enabled_str, "1") == 0);
+    if (!jwt_secret) jwt_secret = "secret";
+
+    if (auth_enabled && strlen(jwt_secret) < 32) {
+        fprintf(stderr,
+            "Error: JWT_SECRET must be at least 32 bytes (256 bits) for HS256.\n"
+            "  current length: %zu bytes\n", strlen(jwt_secret));
+        return 1;
+    }
+
     // dependency injection: wire infrastructure implementations to usecase ports
     io_operations_t production_io = {
         .read_from_client = real_read,
@@ -22,6 +36,11 @@ int main(void) {
     handler_config_t config = {
         .io            = &production_io,
         .delay_seconds = 5,
+        .auth = {
+            .enabled   = auth_enabled,
+            .secret    = jwt_secret,
+            .verify_fn = jwt_verify,
+        },
     };
 
     if (setup_signal_handlers() < 0) {
@@ -34,6 +53,7 @@ int main(void) {
     }
 
     printf("Server is listening on port %d...\n", PORT);
+    printf("Authentication: %s\n", auth_enabled ? "ENABLED" : "DISABLED");
 
     while (!stop_server) {
         int client_fd = accept(sockfd, NULL, NULL);
