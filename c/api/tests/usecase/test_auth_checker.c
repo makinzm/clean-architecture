@@ -16,23 +16,23 @@ static int stub_verify_fail(const char *token, const char *secret) {
 /* ---- tests ---- */
 
 static void test_auth_disabled_always_authorized(void) {
-    AuthConfig cfg = { .enabled = 0, .secret = "s", .verify_fn = stub_verify_fail };
+    AuthConfig cfg = { .enabled = 0, .keys_dir = "/tmp", .verify_fn = stub_verify_fail };
     ASSERT_INT_EQ(check_auth("", &cfg), 1);
     ASSERT_INT_EQ(check_auth(NULL, &cfg), 1);
 }
 
 static void test_auth_enabled_valid_token_authorized(void) {
-    AuthConfig cfg = { .enabled = 1, .secret = "s", .verify_fn = stub_verify_ok };
+    AuthConfig cfg = { .enabled = 1, .keys_dir = "/tmp", .verify_fn = stub_verify_ok };
     ASSERT_INT_EQ(check_auth("sometoken", &cfg), 1);
 }
 
 static void test_auth_enabled_empty_token_unauthorized(void) {
-    AuthConfig cfg = { .enabled = 1, .secret = "s", .verify_fn = stub_verify_ok };
+    AuthConfig cfg = { .enabled = 1, .keys_dir = "/tmp", .verify_fn = stub_verify_ok };
     ASSERT_INT_EQ(check_auth("", &cfg), 0);
 }
 
 static void test_auth_enabled_invalid_token_unauthorized(void) {
-    AuthConfig cfg = { .enabled = 1, .secret = "s", .verify_fn = stub_verify_fail };
+    AuthConfig cfg = { .enabled = 1, .keys_dir = "/tmp", .verify_fn = stub_verify_fail };
     ASSERT_INT_EQ(check_auth("badtoken", &cfg), 0);
 }
 

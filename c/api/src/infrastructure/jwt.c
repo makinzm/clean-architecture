@@ -1,6 +1,6 @@
 #include "jwt.h"
-#include <openssl/hmac.h>
 #include <openssl/evp.h>
+#include <openssl/pem.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -71,80 +71,106 @@ static size_t b64url_decode(const char *src, unsigned char *dst) {
     return j;
 }
 
-/* ---- HMAC-SHA256 helper ---- */
+/* ---- RSA key helpers ---- */
 
-static void hmac_sha256(const char *key, const char *msg, size_t msg_len,
-                        unsigned char out[32]) {
-    unsigned int out_len = 32;
-    HMAC(EVP_sha256(),
-         key, (int)strlen(key),
-         (const unsigned char *)msg, msg_len,
-         out, &out_len);
+static EVP_PKEY *load_private_key(const char *path) {
+    FILE *fp = fopen(path, "r");
+    if (!fp) { perror(path); return NULL; }
+    EVP_PKEY *key = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
+    fclose(fp);
+    return key;
+}
+
+static EVP_PKEY *load_public_key(const char *path) {
+    FILE *fp = fopen(path, "r");
+    if (!fp) { perror(path); return NULL; }
+    EVP_PKEY *key = PEM_read_PUBKEY(fp, NULL, NULL, NULL);
+    fclose(fp);
+    return key;
 }
 
 /* ---- public API ---- */
 
-char *jwt_generate(const char *subject, const char *secret, long exp_seconds) {
-    /* Fixed header for HS256 */
-    const char *header_json = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
+char *jwt_generate(const char *subject, const char *privkey_path, long exp_seconds) {
+    /* Fixed header for RS256 */
+    const char *header_json = "{\"alg\":\"RS256\",\"typ\":\"JWT\"}";
 
     char payload_json[512];
     long exp = (long)time(NULL) + exp_seconds;
     snprintf(payload_json, sizeof(payload_json),
              "{\"sub\":\"%s\",\"exp\":%ld}", subject, exp);
 
-    /* base64url-encode header and payload */
     char hdr_b64[128];
     char pay_b64[768];
     b64url_encode((const unsigned char *)header_json, strlen(header_json), hdr_b64);
     b64url_encode((const unsigned char *)payload_json, strlen(payload_json), pay_b64);
 
-    /* signing input = header_b64 "." payload_b64 */
     char signing[1024];
     snprintf(signing, sizeof(signing), "%s.%s", hdr_b64, pay_b64);
 
-    /* compute signature */
-    unsigned char sig_raw[32];
-    hmac_sha256(secret, signing, strlen(signing), sig_raw);
+    EVP_PKEY *pkey = load_private_key(privkey_path);
+    if (!pkey) return NULL;
 
-    char sig_b64[64];
-    b64url_encode(sig_raw, 32, sig_b64);
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (!ctx) { EVP_PKEY_free(pkey); return NULL; }
 
-    /* assemble token */
+    if (EVP_DigestSignInit(ctx, NULL, EVP_sha256(), NULL, pkey) != 1 ||
+        EVP_DigestSignUpdate(ctx, signing, strlen(signing)) != 1) {
+        EVP_MD_CTX_free(ctx); EVP_PKEY_free(pkey); return NULL;
+    }
+
+    size_t sig_len = 0;
+    EVP_DigestSignFinal(ctx, NULL, &sig_len);
+    unsigned char *sig = malloc(sig_len);
+    if (!sig) { EVP_MD_CTX_free(ctx); EVP_PKEY_free(pkey); return NULL; }
+    EVP_DigestSignFinal(ctx, sig, &sig_len);
+
+    EVP_MD_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+
+    /* base64url encode signature (RSA-2048: 256 bytes → 342 chars) */
+    size_t sig_b64_size = (sig_len * 4 / 3) + 4;
+    char *sig_b64 = malloc(sig_b64_size);
+    if (!sig_b64) { free(sig); return NULL; }
+    b64url_encode(sig, sig_len, sig_b64);
+    free(sig);
+
     size_t total = strlen(hdr_b64) + 1 + strlen(pay_b64) + 1 + strlen(sig_b64) + 1;
     char *token = malloc(total);
-    if (!token) return NULL;
+    if (!token) { free(sig_b64); return NULL; }
     snprintf(token, total, "%s.%s.%s", hdr_b64, pay_b64, sig_b64);
+    free(sig_b64);
+
     return token;
 }
 
-int jwt_verify(const char *token, const char *secret) {
-    if (!token || !secret || token[0] == '\0') return 0;
+/* Extract a JSON string value: returns 1 on success, 0 on failure.
+ * e.g. extract_json_str(json, "sub", out, sizeof(out)) */
+static int extract_json_str(const char *json, const char *key,
+                             char *out, size_t out_size) {
+    char needle[64];
+    snprintf(needle, sizeof(needle), "\"%s\":\"", key);
+    const char *p = strstr(json, needle);
+    if (!p) return 0;
+    p += strlen(needle);
+    const char *end = strchr(p, '"');
+    if (!end) return 0;
+    size_t len = (size_t)(end - p);
+    if (len >= out_size) return 0;
+    memcpy(out, p, len);
+    out[len] = '\0';
+    return 1;
+}
 
-    /* locate the two '.' separators */
+int jwt_verify(const char *token, const char *keys_dir) {
+    if (!token || !keys_dir || token[0] == '\0') return 0;
+
     const char *dot1 = strchr(token, '.');
     if (!dot1) return 0;
     const char *dot2 = strchr(dot1 + 1, '.');
     if (!dot2) return 0;
 
-    /* signing input = everything before the last dot */
-    size_t signing_len = (size_t)(dot2 - token);
-    if (signing_len >= 1024) return 0;
-    char signing[1024];
-    memcpy(signing, token, signing_len);
-    signing[signing_len] = '\0';
-
-    /* re-compute expected signature */
-    unsigned char expected_raw[32];
-    hmac_sha256(secret, signing, signing_len, expected_raw);
-    char expected_b64[64];
-    b64url_encode(expected_raw, 32, expected_b64);
-
-    /* compare with actual signature */
-    const char *actual_sig = dot2 + 1;
-    if (strcmp(expected_b64, actual_sig) != 0) return 0;
-
-    /* check expiration by decoding payload */
+    /* decode payload to extract "sub" */
     size_t pay_b64_len = (size_t)(dot2 - dot1 - 1);
     if (pay_b64_len >= 768) return 0;
     char pay_b64[768];
@@ -156,11 +182,51 @@ int jwt_verify(const char *token, const char *secret) {
     if (payload_len == 0) return 0;
     payload[payload_len] = '\0';
 
+    /* look up public key: <keys_dir>/<sub>.pem */
+    char sub[128];
+    if (!extract_json_str((char *)payload, "sub", sub, sizeof(sub))) return 0;
+
+    char pubkey_path[512];
+    snprintf(pubkey_path, sizeof(pubkey_path), "%s/%s.pem", keys_dir, sub);
+
+    /* signing input = header.payload */
+    size_t signing_len = (size_t)(dot2 - token);
+    if (signing_len >= 1024) return 0;
+    char signing[1024];
+    memcpy(signing, token, signing_len);
+    signing[signing_len] = '\0';
+
+    /* decode signature */
+    const char *sig_b64 = dot2 + 1;
+    unsigned char *sig = malloc(strlen(sig_b64) + 1);
+    if (!sig) return 0;
+    size_t sig_len = b64url_decode(sig_b64, sig);
+    if (sig_len == 0) { free(sig); return 0; }
+
+    EVP_PKEY *pkey = load_public_key(pubkey_path);
+    if (!pkey) { free(sig); return 0; }
+
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (!ctx) { free(sig); EVP_PKEY_free(pkey); return 0; }
+
+    int result = 0;
+    if (EVP_DigestVerifyInit(ctx, NULL, EVP_sha256(), NULL, pkey) == 1 &&
+        EVP_DigestVerifyUpdate(ctx, signing, signing_len) == 1) {
+        result = (EVP_DigestVerifyFinal(ctx, sig, sig_len) == 1) ? 1 : 0;
+    }
+
+    EVP_MD_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+    free(sig);
+
+    if (!result) return 0;
+
+    /* check expiration */
     const char *exp_str = strstr((char *)payload, "\"exp\":");
     if (exp_str) {
-        long exp = 0;
-        sscanf(exp_str + 6, "%ld", &exp);
-        if (exp > 0 && (long)time(NULL) > exp) return 0;
+        long exp_val = 0;
+        sscanf(exp_str + 6, "%ld", &exp_val);
+        if (exp_val > 0 && (long)time(NULL) > exp_val) return 0;
     }
 
     return 1;

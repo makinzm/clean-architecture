@@ -49,8 +49,8 @@ static handler_config_t make_config(int auth_enabled, verify_fn_t verify_fn) {
     handler_config_t cfg;
     cfg.io            = &stub_io;
     cfg.delay_seconds = 0;
-    cfg.auth.enabled  = auth_enabled;
-    cfg.auth.secret   = "testsecret";
+    cfg.auth.enabled   = auth_enabled;
+    cfg.auth.keys_dir  = "/tmp";
     cfg.auth.verify_fn = verify_fn;
     return cfg;
 }

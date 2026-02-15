@@ -5,7 +5,7 @@ typedef int (*verify_fn_t)(const char *token, const char *secret);
 
 typedef struct {
     int          enabled;
-    const char  *secret;
+    const char  *keys_dir;   /* directory containing <sub>.pem public keys */
     verify_fn_t  verify_fn;
 } AuthConfig;
 

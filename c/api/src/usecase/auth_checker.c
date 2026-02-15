@@ -4,5 +4,5 @@
 int check_auth(const char *token, const AuthConfig *config) {
     if (!config->enabled) return 1;
     if (!token || strlen(token) == 0) return 0;
-    return config->verify_fn(token, config->secret);
+    return config->verify_fn(token, config->keys_dir);
 }

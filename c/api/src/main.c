@@ -15,16 +15,9 @@
 
 int main(void) {
     const char *auth_enabled_str = getenv("AUTH_ENABLED");
-    const char *jwt_secret       = getenv("JWT_SECRET");
+    const char *keys_dir         = getenv("KEYS_DIR");
     int auth_enabled = (auth_enabled_str && strcmp(auth_enabled_str, "1") == 0);
-    if (!jwt_secret) jwt_secret = "secret";
-
-    if (auth_enabled && strlen(jwt_secret) < 32) {
-        fprintf(stderr,
-            "Error: JWT_SECRET must be at least 32 bytes (256 bits) for HS256.\n"
-            "  current length: %zu bytes\n", strlen(jwt_secret));
-        return 1;
-    }
+    if (!keys_dir) keys_dir = "src/infrastructure/keys";
 
     // dependency injection: wire infrastructure implementations to usecase ports
     io_operations_t production_io = {
@@ -38,7 +31,7 @@ int main(void) {
         .delay_seconds = 5,
         .auth = {
             .enabled   = auth_enabled,
-            .secret    = jwt_secret,
+            .keys_dir  = keys_dir,
             .verify_fn = jwt_verify,
         },
     };

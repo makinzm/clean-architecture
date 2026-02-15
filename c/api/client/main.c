@@ -61,21 +61,19 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    const char *secret   = getenv("JWT_SECRET");
-    if (!secret) secret  = "secret";
-
-    if (strlen(secret) < 32) {
-        fprintf(stderr,
-            "Error: JWT_SECRET must be at least 32 bytes (256 bits) for HS256.\n"
-            "  current length: %zu bytes\n", strlen(secret));
-        return 1;
-    }
+    const char *privkey_path = getenv("PRIVKEY_PATH");
+    const char *client_id    = getenv("CLIENT_ID");
+    if (!client_id) client_id = "client";
 
     const char *port_str = getenv("SERVER_PORT");
     int port = port_str ? atoi(port_str) : 9999;
 
     if (strcmp(argv[1], "generate") == 0) {
-        char *token = jwt_generate("client", secret, 3600);
+        if (!privkey_path) {
+            fprintf(stderr, "Error: PRIVKEY_PATH is not set.\n");
+            return 1;
+        }
+        char *token = jwt_generate(client_id, privkey_path, 3600);
         if (!token) { fprintf(stderr, "jwt_generate failed\n"); return 1; }
         printf("%s\n", token);
         free(token);
@@ -85,7 +83,11 @@ int main(int argc, char *argv[]) {
     const char *path = (argc >= 3) ? argv[2] : "/";
 
     if (strcmp(argv[1], "request") == 0) {
-        char *token = jwt_generate("client", secret, 3600);
+        if (!privkey_path) {
+            fprintf(stderr, "Error: PRIVKEY_PATH is not set.\n");
+            return 1;
+        }
+        char *token = jwt_generate(client_id, privkey_path, 3600);
         if (!token) { fprintf(stderr, "jwt_generate failed\n"); return 1; }
         send_request(path, token, port);
         free(token);
