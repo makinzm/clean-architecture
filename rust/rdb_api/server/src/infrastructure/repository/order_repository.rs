@@ -40,3 +40,39 @@ fn map_to_domain(model: OrderModel) -> Order {
         created_at: model.created_at,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use sea_orm::{DatabaseBackend, MockDatabase, MockExecResult, TransactionTrait};
+
+    #[tokio::test]
+    async fn test_create() {
+        let now = Utc::now().naive_utc();
+        let mock_model = OrderModel {
+            id: 1,
+            user_id: 10,
+            item_name: "Widget".to_string(),
+            quantity: 5,
+            created_at: now,
+        };
+
+        let db = MockDatabase::new(DatabaseBackend::MySql)
+            .append_query_results([vec![mock_model]])
+            .append_exec_results([MockExecResult {
+                last_insert_id: 1,
+                rows_affected: 1,
+            }])
+            .into_connection();
+
+        let mut tx = db.begin().await.unwrap();
+        let repo = SeaOrmOrderRepository;
+        let result = repo.create(&mut tx, 10, "Widget", 5).await.unwrap();
+
+        assert_eq!(result.id, 1);
+        assert_eq!(result.user_id, 10);
+        assert_eq!(result.item_name, "Widget");
+        assert_eq!(result.quantity, 5);
+    }
+}

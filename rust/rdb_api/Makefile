@@ -33,6 +33,8 @@ db:
 			&& echo "  TiDB ready." && break; \
 		echo "  [$$i/30] retrying in 2s..."; sleep 2; \
 	done
+	@echo "==> Running migrations..."
+	@devbox run -- sh -c 'cd rust/rdb_api && DATABASE_URL="mysql://root@127.0.0.1:4000/rdb_api" sea-orm-cli migrate up -d server/migration'
 
 # ── Build ────────────────────────────────────────────────────
 
@@ -47,7 +49,7 @@ e2e: build
 	@lsof -ti:8080 | xargs kill 2>/dev/null || true
 	@for i in $$(seq 1 10); do lsof -ti:8080 >/dev/null 2>&1 || break; sleep 1; done
 	@echo "==> Resetting DB..."
-	@cd server && RUST_LOG=off ./target/debug/server --reset
+	@devbox run -- sh -c 'cd rust/rdb_api && DATABASE_URL="mysql://root@127.0.0.1:4000/rdb_api" sea-orm-cli migrate fresh -d server/migration'
 	@echo "==> Starting server (log: $(SERVER_LOG))..."
 	@cd server && RUST_LOG=warn ./target/debug/server >$(SERVER_LOG) 2>&1 & \
 		echo $$! > $(SERVER_PID)

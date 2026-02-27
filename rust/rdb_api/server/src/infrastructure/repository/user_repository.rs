@@ -66,3 +66,114 @@ fn map_to_domain(model: UserModel) -> User {
         updated_at: model.updated_at,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use sea_orm::{DatabaseBackend, MockDatabase, MockExecResult, TransactionTrait};
+
+    #[tokio::test]
+    async fn test_find_by_id() {
+        let now = Utc::now().naive_utc();
+        let mock_model = UserModel {
+            id: 1,
+            name: "Alice".to_string(),
+            email: "alice@example.com".to_string(),
+            order_count: 0,
+            created_at: now,
+            updated_at: now,
+        };
+
+        let db = MockDatabase::new(DatabaseBackend::MySql)
+            .append_query_results([vec![mock_model]])
+            .into_connection();
+
+        let mut tx = db.begin().await.unwrap();
+        let repo = SeaOrmUserRepository;
+        let result = repo.find_by_id(&mut tx, 1).await.unwrap();
+
+        assert!(result.is_some());
+        let user = result.unwrap();
+        assert_eq!(user.id, 1);
+        assert_eq!(user.name, "Alice");
+    }
+
+    #[tokio::test]
+    async fn test_find_all() {
+        let now = Utc::now().naive_utc();
+        let mock_model = UserModel {
+            id: 1,
+            name: "Alice".to_string(),
+            email: "alice@example.com".to_string(),
+            order_count: 0,
+            created_at: now,
+            updated_at: now,
+        };
+
+        let db = MockDatabase::new(DatabaseBackend::MySql)
+            .append_query_results([vec![mock_model]])
+            .into_connection();
+
+        let mut tx = db.begin().await.unwrap();
+        let repo = SeaOrmUserRepository;
+        let result = repo.find_all(&mut tx).await.unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].name, "Alice");
+    }
+
+    #[tokio::test]
+    async fn test_create() {
+        let now = Utc::now().naive_utc();
+        let mock_model = UserModel {
+            id: 1,
+            name: "Alice".to_string(),
+            email: "alice@example.com".to_string(),
+            order_count: 0,
+            created_at: now,
+            updated_at: now,
+        };
+
+        let db = MockDatabase::new(DatabaseBackend::MySql)
+            .append_query_results([vec![mock_model]])
+            .append_exec_results([MockExecResult {
+                last_insert_id: 1,
+                rows_affected: 1,
+            }])
+            .into_connection();
+
+        let mut tx = db.begin().await.unwrap();
+        let repo = SeaOrmUserRepository;
+        let result = repo.create(&mut tx, "Alice", "alice@example.com").await.unwrap();
+
+        assert_eq!(result.id, 1);
+        assert_eq!(result.name, "Alice");
+        assert_eq!(result.email, "alice@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_increment_order_count() {
+        let now = Utc::now().naive_utc();
+        let mock_model = UserModel {
+            id: 1,
+            name: "Alice".to_string(),
+            email: "alice@example.com".to_string(),
+            order_count: 0,
+            created_at: now,
+            updated_at: now,
+        };
+
+        let db = MockDatabase::new(DatabaseBackend::MySql)
+            .append_query_results([vec![mock_model.clone()], vec![mock_model.clone()]])
+            .append_exec_results([MockExecResult {
+                last_insert_id: 1,
+                rows_affected: 1,
+            }])
+            .into_connection();
+
+        let mut tx = db.begin().await.unwrap();
+        let repo = SeaOrmUserRepository;
+        repo.increment_order_count(&mut tx, 1).await.unwrap();
+    }
+}
