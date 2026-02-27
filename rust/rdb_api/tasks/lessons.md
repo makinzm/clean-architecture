@@ -53,3 +53,19 @@
   - TiDB の HTTP ステータス: `curl http://localhost:10080/status`（ただし docker-compose でポート公開が必要）
 - `kill` でプロセスを停止した直後はポートがまだ解放されていない場合がある
   → `kill` 後に `lsof -ti:PORT` が空になるまでループで待つ
+
+---
+
+## [2026-02-27] ORMとドメインモデルの分離徹底と devbox の利用
+
+### 何が起きたか
+SeaORM移行時、`src/entity` フォルダを `src/` 配下（ドメインに並ぶ位置）に作成してしまった。
+ユーザーから「インフラの変更話なのにドメインやエンティティをいじっているのはおかしい」と当然の指摘を受けた。また、`devbox` 環境を活かして `devbox run` を使う配慮も足りなかった。
+
+### ルール
+- **クリーンアーキテクチャでは、ORM仕様の DB モデル（Entity）はインフラ層 (`src/infrastructure/entity`) に配置する**
+  - ORM固有のマクロ（`#[derive(DeriveEntityModel)]` など）がついた構造体はインフラ固有のものであるため、ドメイン層と同格の位置（`src/entity`）に置いてはいけない。
+  - `src/domain/entity` は外部DBライブラリに一切依存しない純粋な構造体として保ち、リポジトリ層実装でモデルの詰め替え（Mapping）を行うこと。
+- **コマンドラインツール（`sea-orm-cli`など）は常に `devbox run` を経由して実行する**
+  - グローバルにコマンドをインストールする（`cargo install`など）行為は禁止。
+  - プロジェクトに閉じた再現性を担保するため、かならず `devbox.json` で管理し `devbox run -- <cmd>` の形式で呼び出すこと。

@@ -14,19 +14,19 @@ pub enum AppError {
     #[error("bad request: {0}")]
     BadRequest(String),
     #[error("database error: {0}")]
-    Database(sqlx::Error),
+    Database(sea_orm::DbErr),
     #[error("internal error: {0}")]
     Internal(anyhow::Error),
 }
 
 pub type AppResult<T> = Result<T, AppError>;
 
-impl From<sqlx::Error> for AppError {
-    fn from(e: sqlx::Error) -> Self {
-        if let sqlx::Error::Database(ref db_err) = e {
-            if db_err.is_unique_violation() {
-                return AppError::Conflict(format!("conflict: {}", db_err.message()));
-            }
+impl From<sea_orm::DbErr> for AppError {
+    fn from(e: sea_orm::DbErr) -> Self {
+        // Simple mapping for unique constraint violation in SeaORM
+        let err_str = e.to_string();
+        if err_str.contains("Duplicate entry") || err_str.contains("UNIQUE constraint failed") {
+            return AppError::Conflict(format!("conflict: {}", err_str));
         }
         AppError::Database(e)
     }

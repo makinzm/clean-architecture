@@ -161,34 +161,6 @@
       "last_modified": "2026-02-11T21:01:36Z",
       "resolved": "github:NixOS/nixpkgs/2343bbb58f99267223bc2aac4fc9ea301a155a16?lastModified=1770843696&narHash=sha256-LovWTGDwXhkfCOmbgLVA10bvsi%2FP8eDDpRudgk68HA8%3D"
     },
-    "glibcLocales@latest": {
-      "last_modified": "2026-02-23T15:40:43Z",
-      "resolved": "github:NixOS/nixpkgs/80d901ec0377e19ac3f7bb8c035201e2e098cc97#glibcLocales",
-      "source": "devbox-search",
-      "version": "2.42-51",
-      "systems": {
-        "aarch64-linux": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/2m0bi1my8d60caywvn71iw3gqn3qy9vc-glibc-locales-2.42-51",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/2m0bi1my8d60caywvn71iw3gqn3qy9vc-glibc-locales-2.42-51"
-        },
-        "x86_64-linux": {
-          "outputs": [
-            {
-              "name": "out",
-              "path": "/nix/store/0qlmqvyckf8zyx03n00azgznnkzgi5xw-glibc-locales-2.42-51",
-              "default": true
-            }
-          ],
-          "store_path": "/nix/store/0qlmqvyckf8zyx03n00azgznnkzgi5xw-glibc-locales-2.42-51"
-        }
-      }
-    },
     "jq@latest": {
       "last_modified": "2026-02-23T15:40:43Z",
       "resolved": "github:NixOS/nixpkgs/80d901ec0377e19ac3f7bb8c035201e2e098cc97#jq",
@@ -304,13 +276,6 @@
           "store_path": "/nix/store/jyi1vkcbaihqbfbra4qd0107sj1jhdk4-jq-1.8.1-bin"
         }
       }
-    },
-    "mysql@latest": {
-      "last_modified": "2023-02-24T09:01:09Z",
-      "plugin_version": "0.0.4",
-      "resolved": "github:NixOS/nixpkgs/7d0ed7f2e5aea07ab22ccb338d27fbe347ed2f11#mysql",
-      "source": "devbox-search",
-      "version": "10.6.12"
     },
     "openssl@latest": {
       "last_modified": "2025-12-05T06:24:47Z",
@@ -566,6 +531,54 @@
             }
           ],
           "store_path": "/nix/store/17zvb7nfsz9x184ilpygcwrjc4hrcwjr-rustup-1.28.2"
+        }
+      }
+    },
+    "sea-orm-cli@latest": {
+      "last_modified": "2026-02-23T15:40:43Z",
+      "resolved": "github:NixOS/nixpkgs/80d901ec0377e19ac3f7bb8c035201e2e098cc97#sea-orm-cli",
+      "source": "devbox-search",
+      "version": "1.1.19",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/gmfi4s6442aq7chamd48d7s2z4nsdmwc-sea-orm-cli-1.1.19",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/gmfi4s6442aq7chamd48d7s2z4nsdmwc-sea-orm-cli-1.1.19"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/g7d4327yhaaq5d4ill2swz3mn5q3bp06-sea-orm-cli-1.1.19",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/g7d4327yhaaq5d4ill2swz3mn5q3bp06-sea-orm-cli-1.1.19"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/11g7kjgzn3k6hm4bygrcch3lh0k7bnlz-sea-orm-cli-1.1.19",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/11g7kjgzn3k6hm4bygrcch3lh0k7bnlz-sea-orm-cli-1.1.19"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/fq9xf4lg03chz6fx8qxv8c6wy7p6y6y3-sea-orm-cli-1.1.19",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/fq9xf4lg03chz6fx8qxv8c6wy7p6y6y3-sea-orm-cli-1.1.19"
         }
       }
     }

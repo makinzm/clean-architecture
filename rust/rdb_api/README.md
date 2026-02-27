@@ -7,11 +7,19 @@ Rust + Axum + sqlx + TiDB で実装した学習用 REST API。
 
 ```
 src/
-├── domain/          # エンティティ + リポジトリ trait (Tx ジェネリクス)
+├── domain/          # 純粋なドメインモデル (外部依存なし) + リポジトリ trait (Tx ジェネリクス)
 ├── use_case/        # TransactionManager trait + ユースケース実装
-├── infrastructure/  # sqlx 具体実装 (SqlxTransactionManager, SqlxUserRepository, ...)
+├── infrastructure/  # SeaORM 具体実装 (Entities, SeaOrmTransactionManager, SeaOrmUserRepository, ...)
 └── presentation/    # Axum ハンドラ + OpenAPI
 ```
+
+### Domain vs Entity (SeaORM) の分離について
+
+本プロジェクトでは、クリーンアーキテクチャの原則に従い、**ドメインモデル（`src/domain/entity`）と DBモデル（`src/entity`）を明確に分離** しています。
+
+通常、ORM（SeaORM など）を使う際、強力なマクロ（`#[derive(DeriveEntityModel)]` など）を直接ドメインモデルに付与したくなりますが、これをやってしまうと「ドメイン層が特定の DB ライブラリ（インフラ層）に強く依存（汚染）してしまう」という問題が発生します。
+
+そのため、SeaORM 用のエンティティは `src/entity/` という独立したインフラ向けのモジュールに配置し、Repository（`src/infrastructure/repository/`）の中で、DBから取得した SeaORM モデルを純粋なドメインモデルに詰め替える（Mapping）処理を行っています。これにより、将来的に DB 操作ライブラリを変更したとしても、ドメインロジックの変更を皆無に抑えることができます。
 
 ### Transaction control flow
 
@@ -87,8 +95,8 @@ make all
 
 ```toml
 axum = "0.8"
-sqlx = "0.8"   # MySQL / TiDB
-utoipa = "5"   # OpenAPI spec generation
+sea-orm = "1.1"   # MySQL / TiDB
+utoipa = "5"      # OpenAPI spec generation
 ```
 
 > **Note:** `utoipa-swagger-ui` は axum 0.7 にしか対応していないため、

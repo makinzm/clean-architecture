@@ -6,7 +6,8 @@
     "openssl@latest",
     "pkg-config@latest",
     "rustup@latest",
-    "jq@latest"
+    "jq@latest",
+    "sea-orm-cli@latest"
   ],
   "shell": {
     "init_hook": [

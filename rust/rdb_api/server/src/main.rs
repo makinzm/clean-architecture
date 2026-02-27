@@ -7,14 +7,14 @@ mod use_case;
 use std::sync::Arc;
 
 use dotenvy::dotenv;
-use sqlx::migrate::MigrateDatabase;
-use sqlx::MySql;
+use migration::{Migrator, MigratorTrait};
+use sea_orm::{Database, ConnectionTrait};
 use tracing_subscriber::EnvFilter;
 
 use crate::infrastructure::database::create_pool;
-use crate::infrastructure::repository::order_repository::SqlxOrderRepository;
-use crate::infrastructure::repository::user_repository::SqlxUserRepository;
-use crate::infrastructure::transaction_manager::SqlxTransactionManager;
+use crate::infrastructure::repository::order_repository::SeaOrmOrderRepository;
+use crate::infrastructure::repository::user_repository::SeaOrmUserRepository;
+use crate::infrastructure::transaction_manager::SeaOrmTransactionManager;
 use crate::presentation::router::create_router;
 use crate::presentation::state::AppState;
 use crate::use_case::order::create_order::CreateOrderUseCaseImpl;
@@ -30,8 +30,11 @@ async fn main() {
 
     // --reset: drop + recreate DB (used by `make e2e` for a clean slate), then exit
     if std::env::args().any(|a| a == "--reset") {
-        MySql::drop_database(&database_url).await.unwrap_or(());
-        MySql::create_database(&database_url).await.expect("Failed to create database");
+        let db_url_no_db = database_url.rsplitn(2, '/').nth(1).unwrap();
+        let db = Database::connect(db_url_no_db).await.expect("Failed to connect to MySQL server");
+        let db_name = database_url.split('/').last().unwrap();
+        let _ = db.execute_unprepared(&format!("DROP DATABASE IF EXISTS `{}`", db_name)).await;
+        db.execute_unprepared(&format!("CREATE DATABASE `{}`", db_name)).await.expect("Failed to create database");
         println!("Database reset.");
         return;
     }
@@ -41,20 +44,20 @@ async fn main() {
         .init();
 
     // Ensure DB exists on first run
-    if !MySql::database_exists(&database_url).await.unwrap_or(false) {
-        MySql::create_database(&database_url).await.expect("Failed to create database");
-    }
+    let db_url_no_db = database_url.rsplitn(2, '/').nth(1).unwrap();
+    let root_db = Database::connect(db_url_no_db).await.expect("Failed to connect to MySQL server");
+    let db_name = database_url.split('/').last().unwrap();
+    let _ = root_db.execute_unprepared(&format!("CREATE DATABASE IF NOT EXISTS `{}`", db_name)).await;
 
-    let pool = create_pool().await.expect("Failed to create database pool");
+    let pool = create_pool().await.expect("Failed to create database connection pool");
 
-    sqlx::migrate!("./migrations")
-        .run(&pool)
+    Migrator::up(&pool, None)
         .await
         .expect("Failed to run migrations");
 
-    let tx_manager = Arc::new(SqlxTransactionManager::new(pool));
-    let user_repo = Arc::new(SqlxUserRepository);
-    let order_repo = Arc::new(SqlxOrderRepository);
+    let tx_manager = Arc::new(SeaOrmTransactionManager::new(pool));
+    let user_repo = Arc::new(SeaOrmUserRepository);
+    let order_repo = Arc::new(SeaOrmOrderRepository);
 
     let state = AppState {
         create_user: Arc::new(CreateUserUseCaseImpl::new(

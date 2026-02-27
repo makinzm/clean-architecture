@@ -1,25 +1,25 @@
 use async_trait::async_trait;
-use sqlx::{MySql, Pool, Transaction};
+use sea_orm::{DatabaseConnection, DatabaseTransaction, TransactionTrait};
 
 use crate::error::AppResult;
 use crate::use_case::transaction_manager::TransactionManager;
 
-pub struct SqlxTransactionManager {
-    pool: Pool<MySql>,
+pub struct SeaOrmTransactionManager {
+    db: DatabaseConnection,
 }
 
-impl SqlxTransactionManager {
-    pub fn new(pool: Pool<MySql>) -> Self {
-        Self { pool }
+impl SeaOrmTransactionManager {
+    pub fn new(db: DatabaseConnection) -> Self {
+        Self { db }
     }
 }
 
 #[async_trait]
-impl TransactionManager for SqlxTransactionManager {
-    type Tx = Transaction<'static, MySql>;
+impl TransactionManager for SeaOrmTransactionManager {
+    type Tx = DatabaseTransaction;
 
     async fn begin(&self) -> AppResult<Self::Tx> {
-        Ok(self.pool.begin().await?)
+        Ok(self.db.begin().await?)
     }
 
     async fn commit(&self, tx: Self::Tx) -> AppResult<()> {

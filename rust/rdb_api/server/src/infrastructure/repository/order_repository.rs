@@ -1,34 +1,42 @@
 use async_trait::async_trait;
-use sqlx::{MySql, Transaction};
+use sea_orm::{ActiveModelTrait, DatabaseTransaction, Set};
 
 use crate::domain::entity::order::Order;
 use crate::domain::repository::order_repository::OrderRepository;
 use crate::error::AppResult;
 
-pub struct SqlxOrderRepository;
+use crate::infrastructure::entity::order::{Model as OrderModel, ActiveModel as OrderActiveModel};
+
+pub struct SeaOrmOrderRepository;
 
 #[async_trait]
-impl OrderRepository<Transaction<'static, MySql>> for SqlxOrderRepository {
+impl OrderRepository<DatabaseTransaction> for SeaOrmOrderRepository {
     async fn create(
         &self,
-        tx: &mut Transaction<'static, MySql>,
+        tx: &mut DatabaseTransaction,
         user_id: i64,
         item_name: &str,
         quantity: i32,
     ) -> AppResult<Order> {
-        sqlx::query("INSERT INTO orders (user_id, item_name, quantity) VALUES (?, ?, ?)")
-            .bind(user_id)
-            .bind(item_name)
-            .bind(quantity)
-            .execute(&mut **tx)
-            .await?;
+        let active_model = OrderActiveModel {
+            user_id: Set(user_id),
+            item_name: Set(item_name.to_owned()),
+            quantity: Set(quantity),
+            ..Default::default()
+        };
 
-        let order = sqlx::query_as::<_, Order>(
-            "SELECT id, user_id, item_name, quantity, created_at FROM orders WHERE id = LAST_INSERT_ID()",
-        )
-        .fetch_one(&mut **tx)
-        .await?;
+        let model = active_model.insert(tx).await?;
 
-        Ok(order)
+        Ok(map_to_domain(model))
+    }
+}
+
+fn map_to_domain(model: OrderModel) -> Order {
+    Order {
+        id: model.id,
+        user_id: model.user_id,
+        item_name: model.item_name,
+        quantity: model.quantity,
+        created_at: model.created_at,
     }
 }
