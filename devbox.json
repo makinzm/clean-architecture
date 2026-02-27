@@ -4,7 +4,9 @@
     "gcc@latest",
     "git@latest",
     "openssl@latest",
-    "pkg-config@latest"
+    "pkg-config@latest",
+    "rustup@latest",
+    "jq@latest"
   ],
   "shell": {
     "init_hook": [

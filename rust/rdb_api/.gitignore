@@ -1,0 +1,3 @@
+server/target/
+server/.env
+.e2e/
