@@ -1,9 +1,7 @@
-# Clearn Architectures
+# Clean Architectures
 
-This repository is created for learning and practicing clean architecture.
+This repository is created for learning and practicing clean architecture. I will use multiple languages and create the environment using devbox.
 
-I will use a lot of languages and I create the all environment by devbox (sometimes I may use docker).
-
-```
+```bash
 devbox shell
 ```

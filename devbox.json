@@ -7,7 +7,10 @@
     "pkg-config@latest",
     "rustup@latest",
     "jq@latest",
-    "sea-orm-cli@latest"
+    "sea-orm-cli@latest",
+    "uv@latest",
+    "volta@latest",
+    "lefthook@latest"
   ],
   "shell": {
     "init_hook": [

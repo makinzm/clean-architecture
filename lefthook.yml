@@ -1,0 +1,22 @@
+# lefthook.yml
+# Pre-commit hooks for the Inference Gateway monorepo
+
+pre-commit:
+  commands:
+    python-ruff-format:
+      glob: "apps/inference-gateway/**/*.py"
+      run: devbox run -- bash -c "cd {root} && uv run ruff format {staged_files}"
+      root: apps/inference-gateway/crawler # We can just run from crawler or training, or run it module by module. Wait, since it's a global uv command, we can just run it.
+      # Actually ruff is installed globally via uv or not? We used `uv run ruff`. Let's just use `ruff check` in the root if devbox has it, or `uvx ruff`
+    
+    python-ruff-check:
+      glob: "apps/inference-gateway/**/*.py"
+      run: devbox run -- uvx ruff check {staged_files}
+      
+    rust-fmt:
+      glob: "apps/inference-gateway/server/**/*.rs"
+      run: cd apps/inference-gateway/server && cargo fmt -- --check
+      
+    rust-clippy:
+      glob: "apps/inference-gateway/server/**/*.rs"
+      run: cd apps/inference-gateway/server && cargo clippy -- -D warnings

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inference Gateway</title>
+    <link rel="stylesheet" href="/src/style.css">
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Inference Gateway</h1>
+        <p>Hybrid Two-Stage Recommendation Engine</p>
+      </header>
+      
+      <main>
+        <section class="search-section">
+          <form id="recommend-form">
+            <div class="input-group">
+              <input 
+                type="text" 
+                id="query-input" 
+                placeholder="Describe your issue or code problem..." 
+                required
+                autocomplete="off"
+              >
+              <button type="submit" id="submit-btn">Recommend</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="results-section" class="hidden">
+          <div class="loading-state hidden" id="loading-indicator">
+            <div class="spinner"></div>
+            <p>Analyzing and generating recommendation...</p>
+          </div>
+
+          <div id="error-state" class="hidden error-message"></div>
+
+          <div id="content-display" class="hidden">
+            <div class="card llm-advice">
+              <h2>LLM Advice</h2>
+              <div id="llm-advice-content" class="markdown-body"></div>
+            </div>
+
+            <div class="card related-issues">
+              <h2>Related Issues (Ranked)</h2>
+              <ul id="related-issues-list">
+                <!-- Issues injected here -->
+              </ul>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
