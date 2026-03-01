@@ -20,9 +20,9 @@ pre-commit:
       run: cd apps/inference-gateway/crawler && export PYTHONPATH=src && uv run pytest
       
     rust-fmt:
-      glob: "apps/inference-gateway/server/**/*.rs"
-      run: cd apps/inference-gateway/server && cargo fmt -- --check
+      glob: "apps/inference-gateway/{server,ingest}/**/*.rs"
+      run: bash -lc 'cd apps/inference-gateway/server && cargo fmt -- --check && cd ../ingest && cargo fmt -- --check'
       
     rust-clippy:
-      glob: "apps/inference-gateway/server/**/*.rs"
-      run: cd apps/inference-gateway/server && cargo clippy -- -D warnings
+      glob: "apps/inference-gateway/{server,ingest}/**/*.rs"
+      run: bash -lc 'cd apps/inference-gateway/server && cargo clippy -- -D warnings && cd ../ingest && cargo clippy -- -D warnings'

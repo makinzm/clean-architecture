@@ -1,0 +1,10 @@
+{
+  "job_id": "20260301170123",
+  "total_count": 2246,
+  "processed_count": 49,
+  "elapsed_seconds": 91.993785691,
+  "throughput_rps": 0.5326446741151322,
+  "percentage": 2.1816562778272486,
+  "timestamp": "2026-03-01T17:02:55.733082204+09:00",
+  "is_completed": false
+}

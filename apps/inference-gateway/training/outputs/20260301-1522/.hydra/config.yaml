@@ -1,0 +1,13 @@
+data:
+  knowledge_base_path: ../crawler/data/2026-03-01-02-45/knowledge_base.jsonl
+model:
+  name: BAAI/bge-reranker-base
+  max_length: 512
+training:
+  epochs: 3
+  batch_size: 16
+  learning_rate: 2.0e-05
+  test_size: 0.2
+  seed: 42
+  output_dir: ./results
+  onnx_export_path: ../server/weights/pointwise.onnx

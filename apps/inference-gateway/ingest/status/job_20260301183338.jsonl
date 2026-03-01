@@ -1,0 +1,2 @@
+{"job_id":"20260301183338","total_count":0,"processed_count":0,"elapsed_seconds":0.0,"throughput_rps":0.0,"percentage":0.0,"timestamp":"2026-03-01T18:33:38.860384939+09:00","is_completed":false,"embedding_model":"all-minilm","commit_hash":"847583ced1aa28c04beadaefdfdca5a5de846c6e"}
+{"job_id":"20260301183338","total_count":2246,"processed_count":0,"elapsed_seconds":0.036941626,"throughput_rps":0.0,"percentage":0.0,"timestamp":"2026-03-01T18:33:38.897327121+09:00","is_completed":false,"embedding_model":"all-minilm","commit_hash":"847583ced1aa28c04beadaefdfdca5a5de846c6e"}

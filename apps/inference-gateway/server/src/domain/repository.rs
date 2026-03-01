@@ -3,9 +3,22 @@ use mockall::automock;
 
 #[automock]
 #[async_trait::async_trait]
+pub trait EmbeddingRepository: Send + Sync {
+    /// Generate embeddings for the given text (Ollama)
+    async fn embed_text(&self, text: &str) -> anyhow::Result<Vec<f32>>;
+}
+
+#[automock]
+#[async_trait::async_trait]
 pub trait SearchRepository: Send + Sync {
     /// Retrieve the top K conceptually matching issues from the Vector DB (e.g. Qdrant)
-    async fn search_issues(&self, query: &str, limit: usize) -> anyhow::Result<Vec<Issue>>;
+    async fn search_issues(
+        &self,
+        query_vector: Vec<f32>,
+        limit: usize,
+    ) -> anyhow::Result<Vec<Issue>>;
+    /// Upsert issues into the search index
+    async fn upsert_issues(&self, issues: &[(Issue, Vec<f32>)]) -> anyhow::Result<()>;
 }
 
 #[automock]

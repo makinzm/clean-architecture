@@ -24,3 +24,8 @@ dependencies = [
     "omegaconf>=2.3.0",
     "onnxruntime>=1.24.2",
 ]
+
+[tool.ruff]
+ignore = [
+    "E501",  # Line too long (handled by black)
+]

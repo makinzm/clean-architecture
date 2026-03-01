@@ -19,10 +19,6 @@ target
 **/data/**/*.jsonl
 **/data/**/*.csv
 
-# Training outputs
-apps/inference-gateway/training/outputs/
-apps/inference-gateway/training/results/
-apps/inference-gateway/training/tmp_pytorch_model/
 *.log
 **/__pycache__/
 *.pyc

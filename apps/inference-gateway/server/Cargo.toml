@@ -23,6 +23,9 @@ tracing-opentelemetry = "0.32.1"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
 utoipa = { version = "5.4.0", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
+ort = { version = "2.0.0-rc.9", features = ["ndarray"] }
+tokenizers = "0.21.0"
+ndarray = "0.16.1"
 
 [dev-dependencies]
 mockall = "0.14.0"

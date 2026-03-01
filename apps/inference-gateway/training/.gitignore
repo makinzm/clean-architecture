@@ -1,0 +1,9 @@
+results/
+__pycache__/
+*.onnx
+*.onnx.data
+*.bin
+*.safetensors
+*tokenizer*
+checkpoint-*/
+config.json

@@ -15,10 +15,15 @@
   "shell": {
     "init_hook": [
       "OPENSSL_DEV=$(ls -d /nix/store/*-openssl-*-dev 2>/dev/null | sort -rV | head -1)",
-      "OPENSSL_LIB=$(ls /nix/store/*-openssl-[0-9]*/lib/libcrypto* 2>/dev/null | head -1 | sed 's|/libcrypto.*||')",
-      "[ -n \"$OPENSSL_DEV\" ] && export CPATH=$OPENSSL_DEV/include:$CPATH",
-      "[ -n \"$OPENSSL_DEV\" ] && export PKG_CONFIG_PATH=$OPENSSL_DEV/lib/pkgconfig:$PKG_CONFIG_PATH",
-      "[ -n \"$OPENSSL_LIB\" ] && export LIBRARY_PATH=$OPENSSL_LIB:$LIBRARY_PATH"
+      "if [ -n \"$OPENSSL_DEV\" ]; then",
+      "    OPENSSL_PREFIX=$(grep '^prefix=' \"$OPENSSL_DEV/lib/pkgconfig/openssl.pc\" | cut -d= -f2)",
+      "    export OPENSSL_DIR=$OPENSSL_PREFIX",
+      "    export OPENSSL_LIB_DIR=$OPENSSL_PREFIX/lib",
+      "    export OPENSSL_INCLUDE_DIR=$OPENSSL_DEV/include",
+      "    export PKG_CONFIG_PATH=$OPENSSL_DEV/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}",
+      "    export CPATH=$OPENSSL_INCLUDE_DIR${CPATH:+:$CPATH}",
+      "    export LIBRARY_PATH=$OPENSSL_LIB_DIR${LIBRARY_PATH:+:$LIBRARY_PATH}",
+      "fi"
     ]
   }
 }

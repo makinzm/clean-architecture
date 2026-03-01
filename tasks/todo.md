@@ -1,10 +1,22 @@
-# Training Update Plan
+# Inference Gateway Implementation Todo
 
-- [ ] Analyze the new data format in `apps/inference-gateway/crawler/data/2026-03-01-02-45/knowledge_base.jsonl`.
-- [ ] Review current training scripts in `apps/inference-gateway/training/` to understand what needs to be changed.
-- [ ] Consider and choose a SOTA model for ranking (like Cross-Encoder based on MiniLM or BGE-Reranker) as requested in `tasks/2026-03-01-inference.md`.
-- [ ] Update data loading paths and parsing logic to fit the new format.
-- [ ] Implement/Update model training to use the improved model.
-- [ ] Ensure Cross-Validation or Train/Test Split is implemented.
-- [ ] Generate and track training metrics.
-- [ ] Ensure ONNX export works properly.
+- [x] Domain Layer Updates `[x]`
+    - [x] Add `EmbeddingRepository` trait to `src/domain/repository.rs`
+    - [x] Add `upsert_issues` to `SearchRepository` in `src/domain/repository.rs`
+- [x] Infrastructure Layer Implementation `[x]`
+    - [x] Implement `EmbeddingRepository` in `src/infrastructure/ollama.rs`
+    - [x] Implement `upsert_issues` in `src/infrastructure/qdrant.rs`
+    - [x] Implement real `search_issues` in `src/infrastructure/qdrant.rs` (remove stub)
+- [x] Ingest Component Implementation `[x]`
+    - [x] Initialize `apps/inference-gateway/ingest` crate
+    - [x] Implement `IngestUsecase` with unit tests
+    - [x] Implement `EmbeddingRepository` (Ollama) and `SearchRepository` (Qdrant) in `ingest`
+- [x] Server Component Updates `[x]`
+    - [x] Refactor `server` to share Domain/Infrastructure or update its own
+    - [x] Implement real `search_issues` in `server`
+    - [x] Update `main.rs` with health checks and configurable models
+- [ ] Verification `[ ]`
+    - [ ] Run `cargo test`
+    - [ ] Run ingestion CLI with real `knowledge_base.jsonl`
+    - [ ] Verify Qdrant content via curl
+    - [ ] Test end-to-end via Web UI

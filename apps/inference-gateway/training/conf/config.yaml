@@ -11,3 +11,9 @@ training:
   seed: 42
   output_dir: "./results"
   onnx_export_path: "../server/weights/pointwise.onnx"
+
+hydra:
+  run:
+    dir: outputs/${oc.env:TAG,${now:%Y%m%d-%H%M}}
+  job:
+    chdir: False

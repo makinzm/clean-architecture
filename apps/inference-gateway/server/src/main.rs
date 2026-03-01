@@ -26,32 +26,63 @@ async fn main() -> Result<()> {
     tracing::info!("Starting Inference Gateway...");
 
     // 2. Initialize Infrastructure
-    // (Stub Qdrant init to avoid async errors; a real app parses config here)
-    let qdrant_client_result = Qdrant::from_url("http://localhost:6334").build();
-    let qdrant_client = match qdrant_client_result {
-        Ok(client) => client,
-        Err(_) => {
-            // Provide a dummy panicky implementation if we just want it to compile and not run Qdrant DB yet
-            panic!("Could not initiate Qdrant connection for compilation test");
-        }
-    };
-    // Wait, earlier I wrote `client: qdrant_client::qdrant::qdrant_client::QdrantClient`. But qdrant-client 1.17 provides Qdrant wrapper under `qdrant_client::Qdrant`.
-    // I need to be careful with Qdrant initialization. I'll just skip actual DB connect if testing compilation since we want to move fast.
-    // Let's instantiate a `BurnRanker` and `OllamaClient`
+    let qdrant_url =
+        std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://localhost:6334".to_string());
+    let ollama_endpoint =
+        std::env::var("OLLAMA_ENDPOINT").unwrap_or_else(|_| "http://localhost:11434".to_string());
+    let ollama_embed_model =
+        std::env::var("OLLAMA_EMBED_MODEL").unwrap_or_else(|_| "llama3:latest".to_string());
+    let ollama_gen_model =
+        std::env::var("OLLAMA_GEN_MODEL").unwrap_or_else(|_| "llama3:latest".to_string());
+    let ollama_gen_num_ctx: Option<u32> = std::env::var("OLLAMA_GEN_NUM_CTX")
+        .ok()
+        .and_then(|v| v.parse::<u32>().ok());
+    let ollama_gen_num_predict: Option<i32> = std::env::var("OLLAMA_GEN_NUM_PREDICT")
+        .ok()
+        .and_then(|v| v.parse::<i32>().ok());
+    tracing::info!("Using Ollama embed model: {}", ollama_embed_model);
+    tracing::info!("Using Ollama gen model: {}", ollama_gen_model);
+    if let Some(v) = ollama_gen_num_ctx {
+        tracing::info!("Using Ollama gen num_ctx: {}", v);
+    }
+    if let Some(v) = ollama_gen_num_predict {
+        tracing::info!("Using Ollama gen num_predict: {}", v);
+    }
+
+    let qdrant_client = Qdrant::from_url(&qdrant_url).build()?;
 
     let search_repo = Arc::new(QdrantSearch::new(
         qdrant_client,
         "github_issues".to_string(),
     ));
 
-    let ranking_repo = Arc::new(BurnRanker::new("../weights/pointwise.onnx".to_string()));
+    let model_tag = std::env::var("MODEL_TAG").unwrap_or_default();
+    let base_dir = if model_tag.is_empty() {
+        "../training/outputs/latest".to_string()
+    } else {
+        format!("../training/outputs/{}", model_tag)
+    };
 
-    let llm_repo = Arc::new(OllamaClient::new(
-        "http://localhost:11434".to_string(),
-        "llama3".to_string(),
+    let model_path = format!("{}/pointwise.onnx", base_dir);
+    let tokenizer_path = format!("{}/tokenizer.json", base_dir);
+
+    tracing::info!("Loading ranking model from {}...", model_path);
+    let ranking_repo = Arc::new(BurnRanker::new(&model_path, &tokenizer_path)?);
+
+    let llm_client = Arc::new(OllamaClient::new(
+        ollama_endpoint,
+        ollama_embed_model,
+        ollama_gen_model,
+        ollama_gen_num_ctx,
+        ollama_gen_num_predict,
     ));
 
-    let recommend_usecase = Arc::new(RecommendUsecase::new(search_repo, ranking_repo, llm_repo));
+    let recommend_usecase = Arc::new(RecommendUsecase::new(
+        search_repo.clone(),
+        ranking_repo,
+        llm_client.clone(),
+        llm_client,
+    ));
 
     let app_state = Arc::new(AppState { recommend_usecase });
 
@@ -59,6 +90,7 @@ async fn main() -> Result<()> {
     #[openapi(
         paths(
             crate::interface::handler::handle_recommend,
+            health_check,
         ),
         components(
             schemas(
@@ -75,6 +107,8 @@ async fn main() -> Result<()> {
 
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .route("/", get(health_check))
+        .route("/health", get(health_check))
         .route("/api/recommend", get(handle_recommend))
         .with_state(app_state)
         .layer(CorsLayer::permissive());
@@ -85,4 +119,15 @@ async fn main() -> Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+#[utoipa::path(
+    get,
+    path = "/health",
+    responses(
+        (status = 200, description = "Server is healthy")
+    )
+)]
+async fn health_check() -> &'static str {
+    "Inference Gateway is running"
 }

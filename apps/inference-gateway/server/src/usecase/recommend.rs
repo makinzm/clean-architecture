@@ -8,6 +8,7 @@ pub struct RecommendUsecase {
     search_repo: Arc<dyn SearchRepository>,
     ranking_repo: Arc<dyn RankingRepository>,
     llm_repo: Arc<dyn LlmRepository>,
+    embed_repo: Arc<dyn crate::domain::repository::EmbeddingRepository>,
 }
 
 impl RecommendUsecase {
@@ -15,17 +16,24 @@ impl RecommendUsecase {
         search_repo: Arc<dyn SearchRepository>,
         ranking_repo: Arc<dyn RankingRepository>,
         llm_repo: Arc<dyn LlmRepository>,
+        embed_repo: Arc<dyn crate::domain::repository::EmbeddingRepository>,
     ) -> Self {
         Self {
             search_repo,
             ranking_repo,
             llm_repo,
+            embed_repo,
         }
     }
 
     pub async fn execute(&self, query: &str) -> Result<Recommendation> {
-        // Stage 1: Retrieval (Fetch top 100)
-        let issues = self.search_repo.search_issues(query, 100).await?;
+        // Stage 1: Retrieval (Embed query and Fetch top 100)
+        // We need an embedding repo here. Wait, I should add it to the struct.
+        // I'll update the struct in a multi-replace or just here if I can.
+        // Let's assume I've added embed_repo to the struct.
+
+        let query_vector = self.embed_repo.embed_text(query).await?;
+        let issues = self.search_repo.search_issues(query_vector, 100).await?;
 
         // Stage 2: Ranking (Rank those 100 and get top 3)
         let mut ranked = self.ranking_repo.rank_issues(query, issues).await?;
@@ -52,7 +60,7 @@ mod tests {
     use super::*;
     use crate::domain::entity::Issue;
     use crate::domain::repository::{
-        MockLlmRepository, MockRankingRepository, MockSearchRepository,
+        MockEmbeddingRepository, MockLlmRepository, MockRankingRepository, MockSearchRepository,
     };
 
     #[tokio::test]
@@ -60,8 +68,10 @@ mod tests {
         let mut mock_search = MockSearchRepository::new();
         let mut mock_ranking = MockRankingRepository::new();
         let mut mock_llm = MockLlmRepository::new();
+        let mut mock_embed = MockEmbeddingRepository::new();
 
         let query = "How to handle database connections?";
+        let query_vector = vec![0.1; 128];
 
         let issue1 = Issue {
             id: "1".into(),
@@ -87,9 +97,21 @@ mod tests {
         let expected_ranked = vec![ranked1.clone(), ranked2.clone()];
 
         // Setup expectations
+        mock_embed
+            .expect_embed_text()
+            .with(mockall::predicate::eq(query))
+            .times(1)
+            .returning({
+                let v = query_vector.clone();
+                move |_| Ok(v.clone())
+            });
+
         mock_search
             .expect_search_issues()
-            .with(mockall::predicate::eq(query), mockall::predicate::eq(100))
+            .with(
+                mockall::predicate::eq(query_vector),
+                mockall::predicate::eq(100),
+            )
             .times(1)
             .returning({
                 let issues = retrieved_issues.clone();
@@ -114,6 +136,7 @@ mod tests {
             Arc::new(mock_search),
             Arc::new(mock_ranking),
             Arc::new(mock_llm),
+            Arc::new(mock_embed),
         );
 
         let result = usecase.execute(query).await.unwrap();
