@@ -1,0 +1,44 @@
+categories:
+  deep_learning:
+    - pytorch/pytorch
+    - pyg-team/pytorch_geometric
+    - huggingface/transformers
+    - huggingface/accelerate
+    - huggingface/peft
+    - huggingface/optimum
+    - huggingface/diffusers
+    - microsoft/DeepSpeed
+
+  mlops_and_data:
+    - mlflow/mlflow
+    - treeverse/dvc
+    - kubeflow/pipelines
+    - kubeflow/trainer
+    - ray-project/ray
+    - SchedMD/slurm
+    - dbt-labs/dbt-core
+
+  data_processing:
+    - pola-rs/polars
+    - huggingface/datasets
+    - huggingface/evaluate
+    - apache/flink
+
+  vector_databases:
+    - milvus-io/milvus
+    - qdrant/qdrant
+
+  model_compilation:
+    - microsoft/onnxruntime
+    
+  observability:
+    - prometheus/prometheus
+    - grafana/grafana
+    - open-telemetry/opentelemetry-python
+    - open-telemetry/opentelemetry-rust
+    
+  rust_ecosystem:
+    - tracel-ai/burn
+    - astral-sh/uv
+    - astral-sh/ty
+    - astral-sh/ruff

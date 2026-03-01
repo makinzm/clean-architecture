@@ -1,0 +1,10 @@
+# Project AI Rules
+
+**CRITICAL INSTRUCTION FOR ALL AI AGENTS:**
+1. **MANDATORY FIRST STEP**: You MUST read `tasks/lessons.md` before taking any action or writing any code in this repository.
+2. **TEST-FIRST DEVELOPMENT (TDD) STRICTLY ENFORCED**: 
+   - Write failing tests first before modifying any implementation code in `src/`.
+   - Modifying implementation code without a failing test is completely unacceptable.
+3. **TEST DIRECTORY STRUCTURE**:
+   - The `tests/` directory must strictly mirror the `src/` directory.
+   - Example: `src/usecase/extract_data.py` requires `tests/usecase/test_extract_data.py`. Do not dump tests into the root `tests/` folder.

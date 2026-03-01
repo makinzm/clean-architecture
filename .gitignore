@@ -1,8 +1,33 @@
 .env
-
-
+.python-version
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
 # Added by cargo
-
 /target
 target
+
+# Data files (Exclude large raw data, keep statistics)
+**/knowledge_base.jsonl
+**/ranking_features.csv
+**/data/**/*.jsonl
+**/data/**/*.csv
+
+# Training outputs
+apps/inference-gateway/training/outputs/
+apps/inference-gateway/training/results/
+apps/inference-gateway/training/tmp_pytorch_model/
+*.log
+**/__pycache__/
+*.pyc
+**/weights/*.onnx
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

@@ -1,0 +1,14 @@
+data:
+  knowledge_base_path: "../crawler/knowledge_base.jsonl"
+  features_path: "../crawler/ranking_features.csv"
+model:
+  name: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  max_length: 128
+training:
+  epochs: 3
+  batch_size: 16
+  learning_rate: 2e-5
+  test_size: 0.2
+  seed: 42
+  output_dir: "./results"
+  onnx_export_path: "../server/weights/pointwise.onnx"
