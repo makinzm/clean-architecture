@@ -32,17 +32,7 @@ impl RecommendUsecase {
         // I'll update the struct in a multi-replace or just here if I can.
         // Let's assume I've added embed_repo to the struct.
 
-        let query_vector = self.embed_repo.embed_text(query).await?;
-        let issues = self.search_repo.search_issues(query_vector, 100).await?;
-
-        // Stage 2: Ranking (Rank those 100 and get top 3)
-        let mut ranked = self.ranking_repo.rank_issues(query, issues).await?;
-        ranked.sort_by(|a, b| {
-            b.score
-                .partial_cmp(&a.score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-        let top_3: Vec<RankedIssue> = ranked.into_iter().take(3).collect();
+        let top_3 = self.retrieve_and_rank(query).await?;
 
         // Final Stage: LLM Generation
         let advice = self.llm_repo.generate_advice(query, &top_3).await?;
@@ -52,6 +42,20 @@ impl RecommendUsecase {
             top_issues: top_3,
             llm_advice: advice,
         })
+    }
+
+    pub async fn retrieve_and_rank(&self, query: &str) -> Result<Vec<RankedIssue>> {
+        let query_vector = self.embed_repo.embed_text(query).await?;
+        let issues = self.search_repo.search_issues(query_vector, 100).await?;
+
+        let mut ranked = self.ranking_repo.rank_issues(query, issues).await?;
+        ranked.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        Ok(ranked.into_iter().take(3).collect())
     }
 }
 
@@ -74,14 +78,20 @@ mod tests {
         let query_vector = vec![0.1; 128];
 
         let issue1 = Issue {
-            id: "1".into(),
-            problem: "db".into(),
-            solution: "pool".into(),
+            point_id: 1,
+            repo_name: "org/repo".into(),
+            html_url: "https://github.com/org/repo/issues/1".into(),
+            number: 1,
+            title: "db".into(),
+            body: Some("pool".into()),
         };
         let issue2 = Issue {
-            id: "2".into(),
-            problem: "conn".into(),
-            solution: "close".into(),
+            point_id: 2,
+            repo_name: "org/repo".into(),
+            html_url: "https://github.com/org/repo/issues/2".into(),
+            number: 2,
+            title: "conn".into(),
+            body: Some("close".into()),
         };
 
         let ranked1 = RankedIssue {

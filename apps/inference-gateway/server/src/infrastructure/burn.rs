@@ -34,7 +34,8 @@ impl RankingRepository for BurnRanker {
         let mut ranked = Vec::with_capacity(issues.len());
 
         for issue in issues {
-            let context = format!("{} {}", issue.problem, issue.solution);
+            let body = issue.body.as_deref().unwrap_or("");
+            let context = format!("{}\n{}", issue.title, body);
             let encoding = self
                 .tokenizer
                 .encode((query.to_string(), context), true)

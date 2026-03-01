@@ -39,36 +39,59 @@ impl SearchRepository for QdrantSearch {
         let mut issues = Vec::new();
 
         for point in result.result {
-            let id = match point.id {
-                Some(p_id) => match p_id.point_id_options {
-                    Some(qdrant_client::qdrant::point_id::PointIdOptions::Num(n)) => n.to_string(),
-                    Some(qdrant_client::qdrant::point_id::PointIdOptions::Uuid(s)) => s,
-                    None => "".to_string(),
-                },
-                None => "".to_string(),
+            let point_id = match point.id.and_then(|p_id| p_id.point_id_options) {
+                Some(qdrant_client::qdrant::point_id::PointIdOptions::Num(n)) => n,
+                _ => 0,
             };
 
-            let problem = point
+            let repo_name = point
                 .payload
-                .get("problem")
-                .and_then(|v| match &v.kind {
-                    Some(qdrant_client::qdrant::value::Kind::StringValue(s)) => Some(s.clone()),
-                    _ => None,
-                })
-                .unwrap_or_default();
-            let solution = point
-                .payload
-                .get("solution")
+                .get("repo_name")
                 .and_then(|v| match &v.kind {
                     Some(qdrant_client::qdrant::value::Kind::StringValue(s)) => Some(s.clone()),
                     _ => None,
                 })
                 .unwrap_or_default();
 
+            let html_url = point
+                .payload
+                .get("html_url")
+                .and_then(|v| match &v.kind {
+                    Some(qdrant_client::qdrant::value::Kind::StringValue(s)) => Some(s.clone()),
+                    _ => None,
+                })
+                .unwrap_or_default();
+
+            let number = point
+                .payload
+                .get("number")
+                .and_then(|v| match &v.kind {
+                    Some(qdrant_client::qdrant::value::Kind::IntegerValue(n)) => Some(*n),
+                    _ => None,
+                })
+                .unwrap_or_default();
+
+            let title = point
+                .payload
+                .get("title")
+                .and_then(|v| match &v.kind {
+                    Some(qdrant_client::qdrant::value::Kind::StringValue(s)) => Some(s.clone()),
+                    _ => None,
+                })
+                .unwrap_or_default();
+
+            let body = point.payload.get("body").and_then(|v| match &v.kind {
+                Some(qdrant_client::qdrant::value::Kind::StringValue(s)) => Some(s.clone()),
+                _ => None,
+            });
+
             issues.push(Issue {
-                id,
-                problem,
-                solution,
+                point_id,
+                repo_name,
+                html_url,
+                number,
+                title,
+                body,
             });
         }
 

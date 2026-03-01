@@ -1,8 +1,11 @@
 #[derive(Debug, Clone, PartialEq)]
 pub struct Issue {
-    pub id: String,
-    pub problem: String,
-    pub solution: String, // From the merged PR
+    pub point_id: u64,
+    pub repo_name: String,
+    pub html_url: String,
+    pub number: i64,
+    pub title: String,
+    pub body: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

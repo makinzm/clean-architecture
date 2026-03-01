@@ -47,8 +47,8 @@ export OLLAMA_EMBED_MODEL=all-minilm
 # NOTE: embedding-only models like `all-minilm` will fail with: "does not support generate"
 export OLLAMA_GEN_MODEL=phi3:mini
 # Optional: lower context length / output tokens to reduce memory usage
-# export OLLAMA_GEN_NUM_CTX=1024
-# export OLLAMA_GEN_NUM_PREDICT=128
+export OLLAMA_GEN_NUM_CTX=1024
+export OLLAMA_GEN_NUM_PREDICT=128
 devbox run -- bash -c "cd apps/inference-gateway/server && cargo run"
 ```
 

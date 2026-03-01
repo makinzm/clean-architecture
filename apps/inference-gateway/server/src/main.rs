@@ -13,7 +13,7 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::infrastructure::{
     burn::BurnRanker, ollama::OllamaClient, qdrant::QdrantSearch, telemetry::init_tracer,
 };
-use crate::interface::handler::{AppState, handle_recommend};
+use crate::interface::handler::{AppState, handle_recommend, handle_recommend_stream};
 use crate::usecase::recommend::RecommendUsecase;
 // Import Qdrant properly
 use qdrant_client::Qdrant; // Note: Or qdrant_client::qdrant::qdrant_client::QdrantClient if we use the gRPC client... wait let's use Qdrant builder from qdrant_client!
@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
     tracing::info!("Loading ranking model from {}...", model_path);
     let ranking_repo = Arc::new(BurnRanker::new(&model_path, &tokenizer_path)?);
 
-    let llm_client = Arc::new(OllamaClient::new(
+    let ollama_client = Arc::new(OllamaClient::new(
         ollama_endpoint,
         ollama_embed_model,
         ollama_gen_model,
@@ -80,11 +80,14 @@ async fn main() -> Result<()> {
     let recommend_usecase = Arc::new(RecommendUsecase::new(
         search_repo.clone(),
         ranking_repo,
-        llm_client.clone(),
-        llm_client,
+        ollama_client.clone(),
+        ollama_client.clone(),
     ));
 
-    let app_state = Arc::new(AppState { recommend_usecase });
+    let app_state = Arc::new(AppState {
+        recommend_usecase,
+        ollama_client,
+    });
 
     #[derive(OpenApi)]
     #[openapi(
@@ -110,6 +113,7 @@ async fn main() -> Result<()> {
         .route("/", get(health_check))
         .route("/health", get(health_check))
         .route("/api/recommend", get(handle_recommend))
+        .route("/api/recommend/stream", get(handle_recommend_stream))
         .with_state(app_state)
         .layer(CorsLayer::permissive());
 

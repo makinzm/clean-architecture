@@ -1,14 +1,15 @@
 import './style.css'
 
 interface RankedIssueDto {
-  id: string;
+  repo_name: string;
+  number: number;
   title: string;
+  html_url: string;
   score: number;
 }
 
-interface RecommendResponse {
+interface RecommendStreamMeta {
   query: string;
-  llm_advice: string;
   related_issues: RankedIssueDto[];
 }
 
@@ -27,11 +28,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const adviceContent = document.getElementById('llm-advice-content') as HTMLElement;
   const issuesList = document.getElementById('related-issues-list') as HTMLUListElement;
 
+  let activeSource: EventSource | null = null;
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const query = input.value.trim();
     if (!query) return;
+
+    if (activeSource) {
+      activeSource.close();
+      activeSource = null;
+    }
 
     // Reset UI state
     resultsSection.classList.remove('hidden');
@@ -40,39 +48,96 @@ document.addEventListener('DOMContentLoaded', () => {
     errorState.classList.add('hidden');
     submitBtn.disabled = true;
 
+    adviceContent.textContent = '';
+    issuesList.innerHTML = '';
+
     try {
-      const response = await fetch(`${API_BASE_URL}/recommend?query=${encodeURIComponent(query)}`);
+      const streamUrl = `${API_BASE_URL}/recommend/stream?query=${encodeURIComponent(query)}`;
+      const source = new EventSource(streamUrl);
+      activeSource = source;
 
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
+      let gotMeta = false;
 
-      const data: RecommendResponse = await response.json();
+      source.addEventListener('meta', (event) => {
+        const e = event as MessageEvent;
+        const meta: RecommendStreamMeta = JSON.parse(e.data);
+        gotMeta = true;
 
-      // Populate Advice
-      adviceContent.textContent = data.llm_advice;
-
-      // Populate Issues List
-      issuesList.innerHTML = '';
-      if (data.related_issues.length === 0) {
-        issuesList.innerHTML = '<li class="text-muted">No related issues found.</li>';
-      } else {
-        data.related_issues.forEach(issue => {
+        // Populate Issues List
+        issuesList.innerHTML = '';
+        if (!meta.related_issues || meta.related_issues.length === 0) {
           const li = document.createElement('li');
-          li.innerHTML = `
-            <span class="issue-title">${escapeHtml(issue.title)}</span>
-            <div class="issue-meta">
-              <span>ID: ${escapeHtml(issue.id)}</span>
-              <span class="score-badge">Score: ${issue.score.toFixed(3)}</span>
-            </div>
-          `;
+          li.className = 'text-muted';
+          li.textContent = 'No related issues found.';
           issuesList.appendChild(li);
-        });
-      }
+        } else {
+          meta.related_issues.forEach(issue => {
+            const li = document.createElement('li');
 
-      // Show content
-      loadingIndicator.classList.add('hidden');
-      contentDisplay.classList.remove('hidden');
+            const a = document.createElement('a');
+            a.href = issue.html_url;
+            a.target = '_blank';
+            a.rel = 'noreferrer';
+            a.className = 'issue-title';
+            a.textContent = issue.title;
+
+            const metaDiv = document.createElement('div');
+            metaDiv.className = 'issue-meta';
+
+            const repoSpan = document.createElement('span');
+            repoSpan.textContent = `${issue.repo_name}#${issue.number}`;
+
+            const scoreSpan = document.createElement('span');
+            scoreSpan.className = 'score-badge';
+            scoreSpan.textContent = `Score: ${issue.score.toFixed(3)}`;
+
+            metaDiv.appendChild(repoSpan);
+            metaDiv.appendChild(scoreSpan);
+
+            li.appendChild(a);
+            li.appendChild(metaDiv);
+            issuesList.appendChild(li);
+          });
+        }
+
+        // Show content as soon as meta arrives
+        loadingIndicator.classList.add('hidden');
+        contentDisplay.classList.remove('hidden');
+      });
+
+      source.addEventListener('delta', (event) => {
+        const e = event as MessageEvent;
+        adviceContent.textContent = (adviceContent.textContent ?? '') + e.data;
+      });
+
+      source.addEventListener('server_error', (event) => {
+        const e = event as MessageEvent;
+        console.error('Server streaming error:', e.data);
+        errorState.textContent = `Failed to stream recommendation: ${e.data}`;
+        errorState.classList.remove('hidden');
+        loadingIndicator.classList.add('hidden');
+        submitBtn.disabled = false;
+        source.close();
+        activeSource = null;
+      });
+
+      source.addEventListener('done', () => {
+        submitBtn.disabled = false;
+        source.close();
+        activeSource = null;
+      });
+
+      source.onerror = () => {
+        // Connection errors (including CORS / server down)
+        if (!gotMeta) {
+          errorState.textContent = 'Failed to stream recommendation. Please make sure the API server is running.';
+          errorState.classList.remove('hidden');
+          loadingIndicator.classList.add('hidden');
+        }
+        submitBtn.disabled = false;
+        source.close();
+        activeSource = null;
+      };
 
     } catch (error) {
       console.error('Failed to fetch recommendation:', error);
@@ -80,17 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
       errorState.classList.remove('hidden');
       loadingIndicator.classList.add('hidden');
     } finally {
-      submitBtn.disabled = false;
+      // submitBtn is re-enabled by stream completion
     }
   });
 });
-
-// Basic HTML escaper to prevent XSS
-function escapeHtml(unsafe: string): string {
-  return unsafe
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}

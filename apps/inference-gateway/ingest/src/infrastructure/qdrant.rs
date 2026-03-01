@@ -5,6 +5,7 @@ use qdrant_client::Qdrant;
 use qdrant_client::qdrant::{
     CreateCollectionBuilder, Distance, PointStruct, UpsertPointsBuilder, VectorParamsBuilder,
 };
+use std::hash::{Hash, Hasher};
 
 pub struct QdrantSearch {
     client: Qdrant,
@@ -78,11 +79,14 @@ impl SearchRepository for QdrantSearch {
                     _ => return Err(anyhow::anyhow!("Invalid issue payload")),
                 };
 
-            points.push(PointStruct::new(
-                issue.id as u64,
-                vector.clone(),
-                payload_map,
-            ));
+            // Qdrant point IDs are numeric or UUID; our dataset spans multiple repos, so
+            // `number` alone will collide. Use a stable hash of `repo_name#number`.
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            issue.repo_name.hash(&mut hasher);
+            issue.number.hash(&mut hasher);
+            let point_id = hasher.finish();
+
+            points.push(PointStruct::new(point_id, vector.clone(), payload_map));
         }
 
         self.client
