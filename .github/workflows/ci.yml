@@ -26,7 +26,7 @@ jobs:
       - name: Lint Training with Ruff
         run: |
           cd apps/inference-gateway/training
-          uv run ruff check .
+          uv run ruff check . --exclude eda
 
   rust-test:
     runs-on: ubuntu-latest

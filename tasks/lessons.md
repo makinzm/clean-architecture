@@ -13,4 +13,7 @@
 ## 2. Test Directory Structure
 - The `tests/` directory must strictly mirror the `src/` directory structure.
 - For example, if the implementation is `src/usecase/extract_data.py`, the corresponding test file must be `tests/usecase/test_extract_data.py`.
-- Do not dump all tests into the root `tests/` directory (e.g., `tests/test_usecase.py` is unacceptable).
+## 3. Exploratory Data Analysis (EDA)
+- **Avoid Genericness**: When performing NLP or ML EDA, strictly filter out generic library names, project template words ("issue", "bug", "reproduce"), and common programming keywords ("def", "return"). The analysis must reflect the specific domain (e.g., using SpaCy to extract only nouns/adjectives).
+- **Naming Conventions**: EDA script directories should never have literal placeholder names like `<YYYY-MM-DD>-title`. They must be explicitly descriptive, like `2026-03-01-ml-knowledge-base`.
+- **Exclude from CI**: Experimental EDA scripts and notebooks must be explicitly excluded from CI formatting/linting (e.g., `lefthook` or Github Actions).

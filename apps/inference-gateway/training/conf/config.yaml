@@ -1,9 +1,8 @@
 data:
-  knowledge_base_path: "../crawler/knowledge_base.jsonl"
-  features_path: "../crawler/ranking_features.csv"
+  knowledge_base_path: "../crawler/data/2026-03-01-02-45/knowledge_base.jsonl"
 model:
-  name: "cross-encoder/ms-marco-MiniLM-L-6-v2"
-  max_length: 128
+  name: "BAAI/bge-reranker-base"
+  max_length: 512
 training:
   epochs: 3
   batch_size: 16

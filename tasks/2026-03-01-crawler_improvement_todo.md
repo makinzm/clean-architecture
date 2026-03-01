@@ -1,8 +1,0 @@
-- [x] Inspect the structure of the fetched GitHub data (PRs and Issues)
-- [x] Implement filtering:
-  - [x] Pull Requests must be `merged`.
-  - [x] Issues must be `resolved` (or equivalent closed state without "won't fix", etc. if applicable).
-- [x] Clean up data payload for RAG:
-  - [x] Ensure useful text descriptions and comments are kept.
-  - [x] Remove irrelevant API URLs to improve text quality for RAG.
-- [x] Test the data extraction to verify changes.

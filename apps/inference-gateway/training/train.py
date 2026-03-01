@@ -1,9 +1,10 @@
 import json
 import logging
 import os
+import random
+from datetime import datetime
 
 import hydra
-import pandas as pd
 import torch
 from omegaconf import DictConfig
 from optimum.onnxruntime import ORTModelForSequenceClassification
@@ -37,28 +38,48 @@ class GenericDataset(torch.utils.data.Dataset):
 def main(cfg: DictConfig):
     log.info(f"Starting training pipeline with model {cfg.model.name}")
 
-    # 1. Load labels and texts
-    df_features = pd.read_csv(cfg.data.features_path)
-    issues_dict = {}
+    # 0. GPU check
+    if not torch.cuda.is_available():
+        log.error("GPU is not available. Training aborted.")
+        return
+
+    # 1. Load labels and texts from jsonl
+    issues = []
     with open(cfg.data.knowledge_base_path, encoding="utf-8") as f:
         for line in f:
-            data = json.loads(line)
-            issues_dict[str(data["id"])] = data
+            issues.append(json.loads(line))
+
+    log.info(f"Loaded {len(issues)} issues from knowledge base.")
 
     texts_q = []
     texts_d = []
     scores = []
 
-    for _, row in df_features.iterrows():
-        issue_id = str(row["id"])
-        if issue_id in issues_dict:
-            # Cross-Encoders take a pair of sentences (query, document)
-            texts_q.append(issues_dict[issue_id]["problem"])
-            texts_d.append(issues_dict[issue_id]["solution"])
-            scores.append(float(row["score"]))
+    # Generate Positive/Negative Pairs based on title <-> body mappings
+    random.seed(cfg.training.seed)
+
+    for i, issue in enumerate(issues):
+        title = issue.get("title", "")
+        body = issue.get("body", "") or ""
+
+        if not title or not body:
+            continue
+
+        # Positive pair
+        texts_q.append(title)
+        texts_d.append(body)
+        scores.append(1.0)
+
+        # Negative pair
+        neg_idx = random.choice([j for j in range(len(issues)) if j != i])
+        neg_body = issues[neg_idx].get("body", "") or ""
+        if neg_body:
+            texts_q.append(title)
+            texts_d.append(neg_body)
+            scores.append(0.0)
 
     if not texts_q:
-        log.error("No valid data loaded. Did you run the crawler?")
+        log.error("No valid text pairs generated.")
         return
 
     # 2. Train/Test Split
@@ -128,10 +149,31 @@ def main(cfg: DictConfig):
     eval_results = trainer.evaluate()
     log.info(f"Evaluation Results: {eval_results}")
 
-    # 5. Export Report
-    report_path = "training_report.md"
+    # 5. Get Git Commit Hash
+    try:
+        import subprocess
+
+        git_out = subprocess.check_output(["git", "rev-parse", "HEAD"])
+        git_hash = git_out.decode("ascii").strip()
+    except Exception as e:
+        log.warning(f"Could not retrieve git commit hash: {e}")
+        git_hash = "unknown"
+
+    # 6. Export Report
+    now = datetime.now()
+    tag = os.environ.get("TAG", git_hash[:7] if git_hash != "unknown" else "baseline")
+
+    # Nested date format for reports: reports/YYYY/MM/DD-<tag>.md
+    date_path = now.strftime("%Y/%m/%d")
+    report_dir = os.path.join("reports", date_path)
+    os.makedirs(report_dir, exist_ok=True)
+    report_path = os.path.join(report_dir, f"{tag}.md")
+
     with open(report_path, "w") as f:
         f.write("# Training Report\n")
+        f.write(f"- **Date**: {now.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"- **Tag**: {tag}\n")
+        f.write(f"- **Git Commit**: {git_hash}\n")
         f.write(f"- **Model Architecture**: {cfg.model.name} (Cross-Encoder)\n")
         f.write(f"- **Train Samples**: {len(y_train)}\n")
         f.write(f"- **Test Samples**: {len(y_test)}\n\n")
@@ -140,13 +182,17 @@ def main(cfg: DictConfig):
             f.write(f"- **{k}**: {v:.4f}\n")
         f.write("\n> Model training validated successfully via split metrics.\n")
 
-    # 6. Export to ONNX via Optimum
-    output_dir = os.path.dirname(cfg.training.onnx_export_path)
-    os.makedirs(output_dir, exist_ok=True)
-    log.info(f"Exporting ONNX model to {cfg.training.onnx_export_path}")
+    # 7. Export to ONNX via Optimum
+    onnx_filename = f"pointwise_{tag}.onnx" if "TAG" in os.environ else "pointwise.onnx"
+    # Ensure export path maps to server weights with the specified filename
+    export_dir = os.path.dirname(cfg.training.onnx_export_path)
+    final_export_path = os.path.join(export_dir, onnx_filename)
 
-    # First save PyTorch to a temp directory
-    tmp_path = "./tmp_pytorch_model"
+    os.makedirs(export_dir, exist_ok=True)
+    log.info(f"Exporting ONNX model to {final_export_path}")
+
+    # First save PyTorch to a temp directory (keep it out of root)
+    tmp_path = f"outputs/tmp_pytorch_model_{tag}"
     trainer.save_model(tmp_path)
     tokenizer.save_pretrained(tmp_path)
 
@@ -154,11 +200,11 @@ def main(cfg: DictConfig):
     onnx_model = ORTModelForSequenceClassification.from_pretrained(
         tmp_path, export=True
     )
-    onnx_model.save_pretrained(output_dir)
+    onnx_model.save_pretrained(export_dir)
     # Optimum creates a 'model.onnx', rename it to our desired output pointwise.onnx
-    src_onnx_path = os.path.join(output_dir, "model.onnx")
+    src_onnx_path = os.path.join(export_dir, "model.onnx")
     if os.path.exists(src_onnx_path):
-        os.rename(src_onnx_path, cfg.training.onnx_export_path)
+        os.rename(src_onnx_path, final_export_path)
 
     log.info("Finished successfully. ONNX Checkpoint ready for Burn.")
 
