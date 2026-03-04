@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package gaze.v1;
+
+option go_package = "makinzm/cleanarchitecture/gaze/proto/gazev1";
+
+// SortBy controls how metrics are ordered in the stream.
+enum SortBy {
+  SORT_BY_PID_UNSPECIFIED = 0;
+  SORT_BY_CPU = 1;
+  SORT_BY_MEM = 2;
+}
+
+// WatchRequest parameters for a streaming Watch call.
+message WatchRequest {
+  SortBy sort_by = 1;
+  // top_n limits the number of processes returned per tick (0 = all).
+  int32 top_n = 2;
+  // interval_ms controls the streaming interval (default 2000ms).
+  int32 interval_ms = 3;
+}
+
+// MetricEvent carries information about a single process at a point in time.
+message MetricEvent {
+  int32  pid         = 1;
+  string name        = 2;
+  double cpu_percent = 3;
+  uint64 mem_bytes   = 4;
+  // unix epoch milliseconds
+  int64  timestamp_ms = 5;
+  // event_kind is non-empty for lifecycle events (started / exited / threshold_breached).
+  string event_kind  = 6;
+}
+
+// Gazer is the main gRPC service for the Gaze observer.
+service Gazer {
+  // Watch streams MetricEvents to the caller in real time.
+  rpc Watch(WatchRequest) returns (stream MetricEvent);
+}

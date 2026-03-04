@@ -1,0 +1,23 @@
+{
+    "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.13.2/.schema/devbox.schema.json",
+    "packages": [
+        "go@latest",
+        "clang@latest",
+        "llvm@latest",
+        "libbpf@latest",
+        "bpftools@latest",
+        "protobuf@latest",
+        "protoc-gen-go@latest",
+        "protoc-gen-go-grpc@latest"
+    ],
+    "shell": {
+        "init_hook": [
+            "export CGO_ENABLED=0"
+        ],
+        "scripts": {
+            "generate": "cd go/observer && go generate ./...",
+            "test": "cd go/observer && go test ./...",
+            "build": "cd go/observer && go build ./cmd/gazer && go build ./cmd/gazer-client"
+        }
+    }
+}
