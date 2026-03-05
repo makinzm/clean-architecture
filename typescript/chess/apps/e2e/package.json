@@ -1,0 +1,13 @@
+{
+    "name": "@chess/e2e",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "test:e2e": "playwright test"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.42.0",
+        "@types/node": "^20.0.0"
+    }
+}
