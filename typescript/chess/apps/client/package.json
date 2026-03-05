@@ -10,10 +10,12 @@
     },
     "dependencies": {
         "@chess/domain": "workspace:*",
-        "@chess/use-case": "workspace:*"
+        "@chess/use-case": "workspace:*",
+        "@sveltejs/vite-plugin-svelte": "^6.2.4",
+        "svelte": "^5.53.7"
     },
     "devDependencies": {
         "typescript": "^5.2.2",
-        "vite": "^5.4.1"
+        "vite": "^7.3.1"
     }
 }
