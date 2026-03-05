@@ -16,9 +16,9 @@ const boardEl = document.getElementById('board')!;
 const createBtn = document.getElementById('btn-create')!;
 const statusEl = document.getElementById('game-status')!;
 
-let currentGameId: string | null = null;
+let currentGameId: string | null = localStorage.getItem('currentGameId');
 let selectedSquare: { file: number, rank: number } | null = null;
-let currentFen = '8/8/8/8/8/8/8/8 w - - 0 1';
+let currentFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 function renderBoard(fen: string) {
     currentFen = fen;
@@ -49,8 +49,11 @@ function createSquare(file: number, rank: number, piece: string) {
     square.dataset.file = file.toString();
     square.dataset.rank = rank.toString();
 
+    // Set the base class and optionally the selected class
     if (selectedSquare?.file === file && selectedSquare?.rank === rank) {
-        square.classList.add('selected');
+        square.className = `square ${isLight ? 'light' : 'dark'} selected`;
+    } else {
+        square.className = `square ${isLight ? 'light' : 'dark'}`;
     }
 
     const pieceMap: Record<string, string> = {
@@ -60,22 +63,54 @@ function createSquare(file: number, rank: number, piece: string) {
 
     square.textContent = pieceMap[piece] || '';
 
-    square.addEventListener('click', () => handleSquareClick(file, rank));
+    // No need for individual event listener, using delegation on boardEl
+
     boardEl.appendChild(square);
 }
 
+// Event delegation for square clicks
+boardEl.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const square = target.closest('.square');
+    if (square) {
+        const file = parseInt(square.getAttribute('data-file') || '0', 10);
+        const rank = parseInt(square.getAttribute('data-rank') || '0', 10);
+        handleSquareClick(file, rank);
+    }
+});
+
 async function handleSquareClick(file: number, rank: number) {
-    if (!currentGameId) return;
+    if (!currentGameId) {
+        console.log('No current game ID, ignoring click', { file, rank });
+        return;
+    }
+
+    console.log(`Square clicked: file=${file}, rank=${rank}`);
 
     if (!selectedSquare) {
         selectedSquare = { file, rank };
-        renderBoard(currentFen);
+        const sq = boardEl.querySelector(`.square[data-file="${file}"][data-rank="${rank}"]`);
+
+        console.log('Found square element: ', !!sq);
+
+        // Remove old selection visually
+        const selectedEls = boardEl.querySelectorAll('.selected');
+        selectedEls.forEach(el => el.classList.remove('selected'));
+
+        if (sq) {
+            sq.classList.add('selected');
+            console.log('Added selected class. Current classes:', sq.className);
+        }
     } else {
         // Attempt move
         const fromAlgebraic = toAlgebraic(selectedSquare.file, selectedSquare.rank);
         const toAlgebraicStr = toAlgebraic(file, rank);
 
         selectedSquare = null; // deselect
+
+        // Remove selection visually before network request
+        const selectedEls = boardEl.querySelectorAll('.selected');
+        selectedEls.forEach(el => el.classList.remove('selected'));
 
         if (fromAlgebraic !== toAlgebraicStr) {
             try {
@@ -112,32 +147,37 @@ async function fetchGameState() {
         const data = await res.json();
         const game = data.game;
         statusEl.textContent = 'Game active. Turn: ' + game.turn;
-        // For now we get full board array or something since the domain entity is complex
-        // If backend serialized properly, it has fen or board. Let's just mock FEN update 
-        // depending on what the backend gives. Since the real implementation of MakeMoveUseCase
-        // just returns success, we rely on GetGameStateUseCase which returns the Game.
-        // However, Game hasn't implemented FEN fully, but we added a basic toFenPosition in Phase 1.
-        if (game && game.board && typeof game.board.toFenPosition === 'function') {
-            // Since we don't have Game.restore(), let's hope the backend sends state in an easy format
-            // Since we don't have Game.restore(), let's hope the backend sends state in an easy format
+
+        if (game.fen) {
+            renderBoard(game.fen);
         }
-        // Stub
+
         console.log('Got game state', game);
     }
 }
 
-renderBoard('8/8/8/8/8/8/8/8 w - - 0 1');
+// Initial load check
+if (currentGameId) {
+    fetchGameState();
+} else {
+    renderBoard('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+}
 
 createBtn.addEventListener('click', async () => {
     const res = await fetch('/api/games', { method: 'POST' });
     if (res.ok) {
-        // We assume ID is available or we fetch list
-        const listRes = await fetch('/api/games');
-        const listData = await listRes.json();
-        if (listData.games && listData.games.length > 0) {
-            // Just take latest or stub
-            currentGameId = 'test-id'; // Using a placeholder as our repo adapter hasn't fully integrated IDs
-            statusEl.textContent = 'Game active. Turn: w';
+        const createData = await res.json();
+
+        // We get ID from POST directly
+        currentGameId = createData.game.id;
+        localStorage.setItem('currentGameId', currentGameId!);
+
+        statusEl.textContent = 'Game active. Turn: w';
+        boardEl.dataset.gameReady = 'true'; // Add marker for E2E tests
+
+        if (createData.game.fen) {
+            renderBoard(createData.game.fen);
+        } else {
             renderBoard('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
         }
     }

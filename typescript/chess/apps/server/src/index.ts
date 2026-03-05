@@ -21,7 +21,10 @@ app.get('/api/games', async (c) => {
 app.get('/api/games/:id', async (c) => {
     const id = c.req.param('id');
     const game = await deps.getGameStateUseCase.execute(id);
-    return c.json({ game }, 200);
+    const fen = `${game.board.toFenPosition()} ${game.turn} - - 0 1`;
+    return c.json({
+        game: { id, turn: game.turn, fen }
+    }, 200);
 });
 
 app.post('/api/games/:id/join', async (c) => {
@@ -38,8 +41,15 @@ app.post('/api/games/:id/moves', async (c) => {
     // Again, playerId from auth
     const playerId = 'player-1';
 
-    const result = await deps.makeMoveUseCase.execute(id, playerId, body.from, body.to);
-    return c.json(result, 200);
+    await deps.makeMoveUseCase.execute(id, playerId, body.from, body.to);
+
+    // Return updated game state
+    const game = await deps.getGameStateUseCase.execute(id);
+    const fen = `${game.board.toFenPosition()} ${game.turn} - - 0 1`;
+    return c.json({
+        success: true,
+        game: { id, turn: game.turn, fen }
+    }, 200);
 });
 
 // WS route placeholder

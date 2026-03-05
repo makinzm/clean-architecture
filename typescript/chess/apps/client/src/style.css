@@ -86,6 +86,10 @@ button:active {
     transition: background-color 0.2s, transform 0.1s;
 }
 
+.square * {
+    pointer-events: none;
+}
+
 .square.light {
     background-color: #f0d9b5;
     color: #b58863;
