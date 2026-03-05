@@ -7,10 +7,10 @@
 ## タスクリスト
 
 ### Phase 1: Playwright Setup & RED State
-- [ ] `apps/e2e` パッケージ（または `apps/client` 内）に Playwright をインストール
-- [ ] 基本的なチェスのE2Eテスト（ゲーム作成〜初期盤面表示〜1手動かす）シナリオを作成
-- [ ] サーバーとクライアントを立ち上げてテストを実行する設定（`webServer`設定）を追加
-- [ ] **【重要】** ここで一度 `git commit` する（RED状態の保存）
+- [x] `apps/e2e` パッケージ（または `apps/client` 内）に Playwright をインストール
+- [x] 基本的なチェスのE2Eテスト（ゲーム作成〜初期盤面表示〜1手動かす）シナリオを作成
+- [x] サーバーとクライアントを立ち上げてテストを実行する設定（`webServer`設定）を追加
+- [x] **【重要】** ここで一度 `git commit` する（RED状態の保存）
 
 ### Phase 2: Playwright GREEN State
 - [ ] テストを実行し、失敗内容を確認する
@@ -32,3 +32,13 @@
 
 ### Phase 5: CI Integration
 - [ ] GitHub Actions ワークフローで Playwright のテストが実行されるように追加
+
+---
+
+
+バグ修正
+
+コマ動かせない。あと、部屋の選択もできない。
+部屋の後悔形式も選べない。
+白番と黒版の起動の仕方のドキュメントがない
+

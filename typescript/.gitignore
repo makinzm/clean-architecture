@@ -124,9 +124,12 @@ dist
 # Mac OSX files
 .DS_Store
 
-# Vite / Vitest / Rollup
+# Vite / Vitest / Rollup / Playwright
 dist/
 dist-ssr/
 *.local
 .vitest/
 results.json
+playwright-report/
+test-results/
+blob-report/
