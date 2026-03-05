@@ -1,0 +1,15 @@
+{
+    "name": "@chess/infrastructure",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "src/index.ts",
+    "types": "src/index.ts",
+    "scripts": {
+        "build": "tsc",
+        "test": "vitest"
+    },
+    "dependencies": {
+        "@chess/domain": "workspace:*",
+        "@chess/use-case": "workspace:*"
+    }
+}

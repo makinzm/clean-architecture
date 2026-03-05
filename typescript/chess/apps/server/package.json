@@ -1,0 +1,22 @@
+{
+    "name": "@chess/server",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "dist/index.js",
+    "scripts": {
+        "dev": "node --watch --loader ts-node/esm src/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "test": "vitest"
+    },
+    "dependencies": {
+        "@chess/domain": "workspace:*",
+        "@chess/infrastructure": "workspace:*",
+        "@chess/use-case": "workspace:*",
+        "@hono/node-server": "^1.11.1",
+        "hono": "^4.4.1"
+    },
+    "devDependencies": {
+        "@types/node": "^25.3.3"
+    }
+}
