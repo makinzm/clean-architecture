@@ -129,12 +129,12 @@
             let file = 0;
             for (const char of rows[r]) {
                 if (isNaN(parseInt(char))) {
-                    rankArr.push({ piece: char, file, rank: 7 - r, id: \`\${file}-\${7-r}\` });
+                    rankArr.push({ piece: char, file, rank: 7 - r, id: `${file}-${7-r}` });
                     file++;
                 } else {
                     const spaces = parseInt(char);
                     for (let i = 0; i < spaces; i++) {
-                        rankArr.push({ piece: '', file, rank: 7 - r, id: \`\${file}-\${7-r}\` });
+                        rankArr.push({ piece: '', file, rank: 7 - r, id: `${file}-${7-r}` });
                         file++;
                     }
                 }
