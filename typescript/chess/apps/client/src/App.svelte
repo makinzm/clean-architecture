@@ -1,14 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
+  type AppState = 'MENU' | 'PLAYING';
+  let appState: AppState = $state(localStorage.getItem('currentGameId') ? 'PLAYING' : 'MENU');
+  
   let currentGameId: string | null = $state(localStorage.getItem('currentGameId'));
-  // Ensure we fall back to a valid FEN if nothing is loaded.
   let currentFen: string = $state('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
   let turn: string = $state('w');
   
   let selectedFile: number | null = $state(null);
   let selectedRank: number | null = $state(null);
   let errorMessage: string = $state('');
+  let isLoading: boolean = $state(false);
 
   async function fetchGameState() {
     if (!currentGameId) return;
@@ -35,27 +38,40 @@
 
   async function createGame() {
     errorMessage = '';
-    const res = await fetch('/api/games', { method: 'POST' });
-    if (res.ok) {
-        const createData = await res.json();
-        currentGameId = createData.game.id;
-        localStorage.setItem('currentGameId', currentGameId!);
-        turn = createData.game.turn;
-        if (createData.game.fen) {
-            currentFen = createData.game.fen;
+    isLoading = true;
+    try {
+        const res = await fetch('/api/games', { method: 'POST' });
+        if (res.ok) {
+            const createData = await res.json();
+            currentGameId = createData.game.id;
+            localStorage.setItem('currentGameId', currentGameId!);
+            turn = createData.game.turn;
+            if (createData.game.fen) {
+                currentFen = createData.game.fen;
+            } else {
+                currentFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+            }
+            appState = 'PLAYING';
         } else {
-            currentFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+            errorMessage = 'Failed to create game';
         }
-    } else {
-        errorMessage = 'Failed to create game';
+    } catch(e) {
+        errorMessage = 'Network error while creating game';
+    } finally {
+        isLoading = false;
     }
   }
 
   function abortGame() {
-    currentGameId = null;
-    localStorage.removeItem('currentGameId');
-    currentFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-    errorMessage = '';
+    if (confirm("Are you sure you want to abort/resign?")) {
+        currentGameId = null;
+        localStorage.removeItem('currentGameId');
+        currentFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+        errorMessage = '';
+        appState = 'MENU';
+        selectedFile = null;
+        selectedRank = null;
+    }
   }
 
   function toAlgebraic(file: number, rank: number): string {
@@ -145,23 +161,41 @@
   };
 
   function getPieceSymbol(pieceStr: string) {
+    const isWhite = pieceStr === pieceStr.toUpperCase() && pieceStr !== '';
     const pieceMap: Record<string, string> = {
         'P': '♙', 'N': '♘', 'B': '♗', 'R': '♖', 'Q': '♕', 'K': '♔',
         'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚'
     };
-    return pieceMap[pieceStr] || '';
+    const symbol = pieceMap[pieceStr] || '';
+    if (!symbol) return '';
+    // Use data attributes or inline styles to enforce high contrast
+    return { symbol, isWhite };
   }
 </script>
 
-<div>
+<!-- Modal Overlay for Game Menu -->
+{#if appState === 'MENU'}
+<div class="modal-overlay">
+  <div class="modal">
+    <h2>Welcome to Chess</h2>
+    <p>Ready to start a new match?</p>
+    {#if errorMessage}
+        <div class="error">{errorMessage}</div>
+    {/if}
+    <button id="btn-create" onclick={createGame} disabled={isLoading}>
+        {isLoading ? 'Creating Room...' : 'Start New Game'}
+    </button>
+  </div>
+</div>
+{/if}
+
+<div class="app-container" class:blurred={appState === 'MENU'}>
   <h1>Clean Architecture Chess</h1>
   
   <div id="controls">
-    {#if !currentGameId}
-        <button id="btn-create" onclick={createGame}>New Game</button>
-    {:else}
-        <button id="btn-abort" onclick={abortGame}>Abort / Resign Game</button>
-        <div id="game-status">Game active. Turn: {turn}</div>
+    {#if appState === 'PLAYING'}
+        <button id="btn-abort" class="btn-danger" onclick={abortGame}>Abort / Resign</button>
+        <div id="game-status">Game active. Turn: {turn === 'w' ? 'White' : 'Black'}</div>
     {/if}
   </div>
 
@@ -182,7 +216,12 @@
           data-rank={cell.rank}
           onclick={() => handleSquareClick(cell.file, cell.rank)}
         >
-          {getPieceSymbol(cell.piece)}
+          {#if cell.piece}
+            {@const pieceInfo = getPieceSymbol(cell.piece)}
+            <span class="piece {pieceInfo.isWhite ? 'piece-white' : 'piece-black'}">
+                {pieceInfo.symbol}
+            </span>
+          {/if}
         </div>
       {/each}
     {/each}

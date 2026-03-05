@@ -15,6 +15,10 @@
         "svelte": "^5.53.7"
     },
     "devDependencies": {
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/svelte": "^5.3.1",
+        "jsdom": "^28.1.0",
+        "svelte-check": "^4.4.4",
         "typescript": "^5.2.2",
         "vite": "^7.3.1"
     }
